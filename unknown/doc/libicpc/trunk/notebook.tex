@@ -1,0 +1,126 @@
+%
+% Library Document for ACM/ICPC
+% LaTeX based on library by kaicho-@IHI (U-Tokyo)
+%
+
+\documentclass[10pt]{jsarticle}
+\usepackage[left=3cm,right=2cm,top=4cm,bottom=3cm]{geometry}
+\usepackage{multicol}
+\usepackage{amsmath}
+\usepackage{eclbkbox}
+\usepackage{fancybox}
+\usepackage{pifont}
+\usepackage{txfonts}
+\usepackage{picins}
+\usepackage{ascmac}
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{listings,jlisting}
+
+\newcommand{\codesize}{\footnotesize}
+
+\lstset{%
+ language={C++},
+ backgroundcolor={\color[gray]{.90}},%
+ basicstyle={\codesize\ttfamily},%
+ identifierstyle={\codesize},%
+ commentstyle={\codesize\itshape},%
+ keywordstyle={\codesize\bfseries},%
+ ndkeywordstyle={\codesize},%
+ stringstyle={\codesize\ttfamily},
+ frame={tblr},%
+ breaklines=true,%
+ columns=[l]{fullflexible},%
+ tabsize=4,%
+% numbers=left,%
+ xrightmargin=0zw,%
+ xleftmargin=0zw,%
+ numberstyle={\scriptsize},%
+ stepnumber=1,
+ numbersep=1zw,%
+ lineskip=-0.5ex%
+}
+
+%\everymath{\displaystyle}
+\newenvironment{code}%
+ {\VerbatimEnvironment\begin{breakbox}\vspace{-1em}\footnotesize\begin{Verbatim}}%
+ {\end{Verbatim}\vspace{-.8em}\end{breakbox}}
+
+\setlength{\columnseprule}{0.2pt}
+
+\addtolength{\oddsidemargin}{-.5cm}
+\addtolength{\voffset}{-1.2cm}
+\addtolength{\textwidth}{1cm}
+\addtolength{\textheight}{2cm}
+\setlength{\fboxsep}{.7em}
+\renewcommand{\breakboxskip}{.7em}
+\renewcommand{\ttdefault}{pcr}
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+%\newcommand{\accepted}[1]{\ding{52} Accepted (#1)}
+%\newcommand{\nottested}[0]{\ding{56} NOT TESTED!}
+\newcommand{\accepted}[1]{}
+\newcommand{\nottested}[0]{}
+\newcommand{\derived}[1]{\ding{224} Derived from #1}
+\newcommand{\todo}[1]{\textbf{TODO: #1}}
+\newcommand{\mymaketitle}[3]%
+ {\begin{center}\begin{tabular}{lr}\textsf{\huge #1}\hspace{3.5cm}\mbox{}&#3\\\hline&#2\end{tabular}\end{center}}
+\DeclareMathOperator{\vers}{vers}
+\setcounter{tocdepth}{3}
+\newcommand{\w}[1]{\textbf{#1}}
+
+\makeatletter
+\def\@oddhead{\hfill\thepage}
+\def\@oddfoot{}
+\def\@evenhead{\hfill\thepage}
+\def\@evenfoot{}
+\def\ps@titlepage{\let\@oddhead\@empty}
+\makeatother
+
+
+% fate test
+
+\makeatletter
+\let\@@shipout\shipout
+\def\shipout\vbox{\@@shipout\vbox\bgroup\afterassignment\insertBackGround\let\reserved@a=}
+\def\insertBackGround#1{#1%
+        \iftombow
+                \copy\BackGround\kern0pt
+        \else
+                \kern-1truein\moveleft1truein\copy\BackGround\kern1truein
+        \fi}
+\newbox\BackGroundUnit
+\newbox\BackGround
+\setbox\BackGroundUnit\hbox{\includegraphics*[bb=7 0 355 500,width=21cm]{fatebg.png}}
+\@tempdima\paperheight
+\advance\@tempdima\ht\BackGroundUnit\advance\@tempdima\dp\BackGroundUnit
+\setbox\BackGround\vbox to \@tempdima{
+        \@tempdima=\paperwidth\advance\@tempdima\wd\BackGroundUnit
+        \leaders\hbox to\@tempdima{\leaders\copy\BackGroundUnit\hfil}\vfil
+}
+\wd\BackGround=0pt\ht\BackGround=0pt\dp\BackGround=0pt
+\makeatother
+
+
+
+\begin{document}
+
+\mymaketitle{ここのところのリファレンス}{by kkntkr / unknown}%
+{Last Update: 2008/09/12}
+
+\input{header}
+
+\begin{multicols}{2}
+
+\input{basic}
+\input{geom}
+\input{graph}
+\input{math}
+\input{strings}
+\input{others}
+\input{tips}
+%\input{omamori}
+\input{footer}
+
+\end{multicols}
+
+\end{document}

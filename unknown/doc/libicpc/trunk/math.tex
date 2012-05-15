@@ -1,0 +1,530 @@
+\section{数論}
+
+\subsection{数表}
+
+\paragraph{約数の個数}　
+
+% BEGIN TABULAR MODE
+\begin{tabular}{|l|l|}
+\hline
+N & N以下の数の約数の個数のmax \\ \hline
+1e3 & 32 \\ \hline
+1e4 & 64 \\ \hline
+1e5 & 128 \\ \hline
+1e6 & 240 \\ \hline
+1e7 & 448 \\ \hline
+1e8 & 768 \\ \hline
+1e9 & 1344 \\ \hline
+INT\_MAX & 1600 \\ \hline
+UINT\_MAX & 1920 \\ \hline
+\end{tabular}
+
+
+
+\paragraph{素数の個数}　
+
+% BEGIN TABULAR MODE
+\begin{tabular}{|l|l|}
+\hline
+N & N以下の素数の個数 \\ \hline
+1e1 & 4 \\ \hline
+1e2 & 25 \\ \hline
+1e3 & 168 \\ \hline
+1e4 & 1,229 \\ \hline
+1e5 & 9,592 \\ \hline
+1e6 & 78,498 \\ \hline
+1e7 & 664,579 \\ \hline
+1e8 & 5,761,455 \\ \hline
+1e9 & 50,847,534 \\ \hline
+1e10 & 455,052,511 \\ \hline
+
+\end{tabular}
+% END TABULAR MODE
+
+
+\paragraph{分割数}　
+
+% BEGIN TABULAR MODE
+\begin{tabular}{|l|l|}
+\hline
+N & Nの分割数 \\ \hline
+10 & 42 \\ \hline
+20 & 627 \\ \hline
+30 & 5,604 \\ \hline
+40 & 37,338 \\ \hline
+50 & 204,226 \\ \hline
+60 & 966,467 \\ \hline
+70 & 4,087,968 \\ \hline
+80 & 15,796,476 \\ \hline
+90 & 56,634,173 \\ \hline
+100 & 190,569,292 \\ \hline
+
+\end{tabular}
+
+
+\subsection{定理}
+
+\paragraph{Bertrandの仮説}　
+
+Chebyshevが証明してるので、定理である。任意の自然数nに対してnと2nの間に
+必ず素数が存在する。
+
+
+\paragraph{Wilsonの定理}　
+
+$p$が素数ならば、$(p-1)! \equiv -1 (\mod p)$. 
+$p>1$に対しては逆も成り立つ。
+
+
+\paragraph{Ptolemyの定理}　
+
+円に内接する四角形の対角線の長さの積 = 向かい合う二組の辺の長さの積の和
+
+
+\paragraph{五心の公式}　
+
+\begin{itemize}
+\item{三点が与えられたときの五心の座標}
+\item{重心}
+\begin{itemize}
+\item{(a+b+c)/3}
+\end{itemize}
+\item{垂心 (TODO: complexで書き直す)}
+\end{itemize}
+\begin{lstlisting}
+// (a,b),(c,d),(e,f)
+a-=e,b-=f,c-=e,d-=f;
+p=(b*d+a*c)/(a*d-b*c);
+p*(d-b)+e,p*(a-c)+f;
+\end{lstlisting}
+\begin{itemize}
+\item{TODO: 残り三つ(傍心はパス?)}
+\item{外接円の半径}
+\end{itemize}
+\begin{lstlisting}
+// (a,b),(c,d),(e,f)
+hypot(a-=c,b-=d)*hypot(c-=e,d-=f)*hypot(a+c,b+d)*acos(-1)/fabs(a*d-b*c)
+\end{lstlisting}
+\begin{itemize}
+\item{外接円の半径(complex) (未検証)}
+\end{itemize}
+\begin{lstlisting}
+// a,b,c
+norm(a-b)*norm(b-c)*norm(c-a)*acos(-1)/fabs(outp(a,b)+outp(b,c)+outp(c,a))
+\end{lstlisting}
+
+
+\paragraph{Pickの定理}　
+
+格子点上に頂点を持つ多角形の、面積S、内部の格子点の数i、辺上の格子点の数bに対して、S=i+b/2-1
+
+
+
+
+
+\subsection{オイラーの$\phi$関数}
+
+$\phi(n)$は自然数$n$と互いに素な$n$以下の数の個数
+
+\begin{lstlisting}
+int phi(int n) {
+  int res = n;
+  for(int i = 2; i*i <= n; i++) {
+    if (n % i == 0) {
+      res -= res / i;
+      while(n % i == 0)
+        n /= i;
+    }
+  }
+  if (n > 1) // n is prime
+    res -= res / n;
+  return res;
+}
+ 
+// phi(1)..phi(N) を求める
+void phi_all(int N) {
+  int a[N+1], b[N+1];
+  REP(i, N+1) {
+    a[i] = 1;
+    b[i] = i;
+  }
+ 
+  REP(k, N+1) {
+    if (b[k] < 2)
+      continue;
+    for(int n = k; n <= N; n += k) {
+      for(int m = k-1; b[n]%k == 0; m = k) {
+        a[n] *= m;
+        b[n] /= k;
+      }
+    }
+  }
+  // a[n] == phi(n), b[n] == 1
+}
+\end{lstlisting}
+
+\subsection{中国剰余定理1}
+
+中国剰余定理とは、$n$個の整数 $m_0, \dots, m_{n-1}$ がどの2つの要素も互
+いに素ならば、与えられる $r_0, \dots, r_{n-1}$ に対して
+ $x = r_i \mod m_i$ を満たすような$x$が、$\prod_i m_i$を法として唯一つ存在する、というもの。
+そのような$x$を $ 0 \leq x \leq \prod_i m_i$ の範囲で求めるアルゴリズム。
+但し実装時にはオーバーフローに注意すること。
+\w{m[i]はどの2つの要素も互いに素であること。}
+
+\begin{lstlisting}
+integer chinese_remainder(const vector<int>& m, const vector<int>& r) {
+  int n = m.size();
+  integer prod = 1;
+  REP(i, n)
+  prod *= m[i];
+
+  integer res = 0;
+  REP(i, n){
+  integer M = prod / m[i];
+  integer a = divide(M, 1, m[i]);
+  integer R = r[i] - r[i] / prod * prod;
+  if(R < 0)
+    R += prod;
+  res = (res + M * a * r[i] % prod) % prod;
+  }
+  
+  return res;
+}
+\end{lstlisting}
+
+
+
+\subsection{中国剰余定理2}
+
+2つの制約「K=ax+b」「K=cy+d」に対して、それらを同時に満たすKは「K=ez+f」
+という一つの式で表せる(か、もしくはそのようなKは存在しない)。
+ただし、e=lcm(a,c)。aとcは互いに素でなくてもよい。
+
+以下はそのようなe,fを求めるアルゴリズム。fの値の正規化方法は臨機応変に。
+オーバーフローに注意すること。
+
+N個の制約について求めたい場合はN-1回呼んでください。
+もしくは、1x+0に対してN回fold。
+
+\w{互いに素である必要はないが、答えがない場合に注意}
+
+\begin{lstlisting}
+// ax+bのaとb
+struct Constraint {
+  int mult;
+  int base;
+};
+ 
+// BE CAREFUL OF OVERFLOW!!
+Constraint chinese_remainder(const Constraint& a, const Constraint& b) {
+  Constraint r;
+  int g = gcd(a.mult, b.mult);
+  int d = b.base - a.base;
+ 
+  // 解がない場合はこのassertで落ちるので、マズい場合は適宜修正すること
+  assert(d % g == 0);
+  d /= g;
+ 
+  // このへんでオーバーフローに注意
+  r.mult = a.mult / g * b.mult;
+  r.base = a.mult * d * inv(a.mult/g, b.mult/g) + a.base;
+ 
+  // ここから解の正規化
+  // 以下のコードではK=ax+b=cy+d=ez+fに対して、
+  // x>=0,y>=0の条件がついていた場合にz>=0を必要十分とするようなfを構成している
+  // whileループが長引きそうなら割り算にしたほうがいいかもね
+  r.base %= r.mult;
+  while(r.base < a.base || r.base < b.base)
+    r.base += r.mult;
+ 
+  return r;
+}
+\end{lstlisting}
+
+
+\subsection{逆数}
+
+$ a x \equiv 1 (\mod p)$ なる$x$を求める。
+$p$が素数でない場合、$a$の逆元が存在すればそれを返す。$a$に0を指定したり、
+逆元が存在しなければdivision by zeroで落ちる。
+
+\begin{lstlisting}
+int inv(int a, int p) {
+  return ( a == 1 ? 1 : (1 - p*inv(p%a, a)) / a + p );
+}
+\end{lstlisting}
+
+
+\subsection{拡張ユークリッド互除法}
+
+整数$a, b$に対して、$ax + by = \mathrm{gcd}(a, b)$ となる整数$x, y$を求める。
+
+\begin{lstlisting}
+void xgcd(integer a, integer b, integer& x, integer& y) {
+  if (b == 0) {
+    x = 1;
+    y = 0;
+  }
+  else {
+    xgcd(b, a%b, y, x);
+    y -= a/b*x;
+  }
+}
+\end{lstlisting}
+
+
+\subsection{線形ディオファントス方程式}
+
+$an = b \mod m$ となる、非負でかつ最小の$n$を求める。
+もしくは、$m$を法とした剰余環上で$b/a$を計算する。
+\w{$a, b, m$は非負であること。}
+
+\accepted{UVA700 Date Bugs}
+
+\begin{lstlisting}
+struct no_solution {};
+integer divide(integer a, integer b, integer m) {
+  integer g = gcd(a, m);
+  if (b%g != 0)
+    throw no_solution();
+  integer x, y;
+  xgcd(a, m, x, y);
+  assert(a*x+m*y == gcd(a,m));
+  integer n = x*b/g;
+  integer dn = m/g;
+  n -= n/dn*dn;
+  if (n < 0)
+    n += dn;
+  return n;
+}
+\end{lstlisting}
+
+
+
+\subsection{行列演算}
+
+\begin{lstlisting}
+typedef double* vector_t;
+typedef vector_t* matrix_t;
+matrix_t new_matrix(int n) {
+  matrix_t x = new vector_t[n];
+  for(int i = 0; i < n; i++)
+    x[i] = new double[n];
+  return x;
+}
+matrix_t dup_matrix(matrix_t x_, int n) {
+  matrix_t x = new_matrix(n);
+  for(int i = 0; i < n; i++)
+    copy(x_[i], x_[i]+n, x[i]);
+  return x;
+}
+void delete_matrix(matrix_t x, int n) {
+  for(int i = 0; i < n; i++)
+    delete[] x[i];
+  delete[] x;
+}
+matrix_t multiply(matrix_t a, matrix_t b, int n) {
+  matrix_t r = new_matrix(n);
+  for(int i = 0; i < n; i++) {
+    for(int j = 0; j < n; j++) {
+      r[i][j] = 0;
+      for(int k = 0; k < n; k++)
+        r[i][j] += a[i][k] * b[k][j];
+    }
+  }
+  return r;
+}
+\end{lstlisting}
+
+\subsection{行列の高速べき乗}
+
+\begin{lstlisting}
+matrix_t pow(matrix_t& e, int n, int m) {
+  matrix_t r = new_matrix(n);
+ 
+  for(int i = 0; i < n; i++)
+    for(int j = 0; j < n; j++)
+      r[i][j] = ((m&1) == 0 ? (i == j ? 1 : 0) : e[i][j]);
+ 
+  if (m >= 2) {
+    matrix_t u = pow(e, n, m/2);
+    matrix_t uu = multiply(u, u, n);
+    matrix_t z = multiply(r, uu, n);
+    delete_matrix(u, n);
+    delete_matrix(uu, n);
+    delete_matrix(r, n);
+    r = z;
+  }
+ 
+  return r;
+}
+\end{lstlisting}
+
+
+\subsection{ガウスの消去法}
+
+連立方程式 $ Ax=b $ を解く。$A, b$は破壊され、答えが$b$に代入される。
+invert, moduloを別途定義すること。
+$A, b$はmoduloによる正規化が既に行われているものとする。
+
+\begin{lstlisting}
+void gauss(matrix_t& A, vector_t& b, int n, int m) {
+  int pi = 0, pj = 0;
+  while(pi < n && pj < m) {
+    for(int i = pi+1; i < n; i++) {
+      if (abs(A[i][pj]) > abs(A[pi][pj])) {
+        swap(A[i], A[pi]);
+        swap(b[i], b[pi]);
+      }
+    }
+    if (abs(A[pi][pj]) > 0) {
+      int d = invert(A[pi][pj]);
+      REP(j, m)
+        A[pi][j] = modulo(A[pi][j] * d);
+      b[pi] = modulo(b[pi] * d);
+      for(int i = pi+1; i < n; i++) {
+        int k = A[i][pj];
+        REP(j, m)
+          A[i][j] = modulo(A[i][j] - k * A[pi][j]);
+        b[i] = modulo(b[i] - k * b[pi]);
+      }
+      pi++;
+    }
+    pj++;
+  }
+  for(int i = pi; i < n; i++)
+    if (abs(b[i]) > 0)
+      throw Inconsistent();
+  if (pi < m || pj < m)
+    throw Ambiguous();
+  for(int j = m-1; j >= 0; j--)
+    REP(i, j)
+      b[i] = modulo(b[i] - b[j] * A[i][j]);
+}
+\end{lstlisting}
+
+
+\subsection{LU分解}
+
+aを破壊しLU形式に変換する。pは行交換の情報を保持する。
+
+\begin{lstlisting}
+bool lu_decompose(matrix_t& a, int* p, int n) {
+  for(int i = 0; i < n; i++)
+    p[i] = i;
+  for(int k = 0; k < n; k++) {
+    int pivot = k;
+    for(int i = k+1; i < n; i++)
+      if (abs(a[i][k]) > abs(a[pivot][k]))
+        pivot = i;
+    swap(a[k], a[pivot]);
+    swap(p[k], p[pivot]);
+    if (abs(a[k][k]) < EP)
+      return false;
+    for(int i = k+1; i < n; i++) {
+      double m = (a[i][k] /= a[k][k]);
+      for(int j = k+1; j < n; j++)
+        a[i][j] -= a[k][j] * m;
+    }
+  }
+  return true;
+}
+void lu_solve(matrix_t& a, int* p, vector_t& b, vector_t& x, int n) {
+  for(int i = 0; i < n; i++)
+    x[i] = b[p[i]];
+  for(int k = 0; k < n; k++)
+    for(int i = 0; i < k; i++)
+      x[k] -= a[k][i] * x[i];
+  for(int k = n-1; k >= 0; k--) {
+    for(int i = k+1; i < n; i++)
+      x[k] -= a[k][i] * x[i];
+    x[k] /= a[k][k];
+  }
+}
+\end{lstlisting}
+
+
+\subsection{単体法}
+
+$\mathrm{minimize} ~ \vec{c} \vec{x} ~~ \mathrm{s.t.} ~~ A \vec{x} = \vec{b} $.
+解が存在しない/最適値が発散する場合は \verb|vector_t()| を返す。
+単体法は最悪の場合で指数時間がかかるので、あくまで最終手段。これを使う前に、ほかの方法が使えないか十分考えること。
+特に、2変数の不等式制約は二次元の凸多角形クリッピングとして捉えることができる。
+
+\begin{lstlisting}
+const double INF = numeric_limits<double>::infinity();
+typedef vector<double> vector_t;
+typedef vector<vector_t> matrix_t;
+
+vector_t simplex(matrix_t A, vector_t b, vector_t c) {
+  const int n = c.size(), m = b.size();
+ 
+  REP(i, m) if (b[i] < 0) {
+    REP(j, n)
+      A[i][j] *= -1;
+    b[i] *= -1;
+  }
+  vector<int> bx(m), nx(n);
+  REP(i, m)
+    bx[i] = n+i;
+  REP(i, n)
+    nx[i] = i;
+  A.resize(m+2);
+  REP(i, m+2)
+    A[i].resize(n+m, 0);
+  REP(i, m)
+    A[i][n+i] = 1;
+  REP(i, m) REP(j, n)
+    A[m][j] += A[i][j];
+  b.push_back(accumulate(ALLOF(b), (double)0.0));
+  REP(j, n)
+    A[m+1][j] = -c[j];
+  REP(i, m)
+    A[m+1][n+i] = -INF;
+  b.push_back(0);
+
+  REP(phase, 2) {
+    for(;;) {
+      int ni = -1;
+      REP(i, n)
+        if (A[m][nx[i]] > EPS && (ni < 0 || nx[i] < nx[ni]))
+          ni = i;
+      if (ni < 0)
+        break;
+      int nv = nx[ni];
+      vector_t bound(m);
+      REP(i, m)
+        bound[i] = (A[i][nv] < EPS ? INF : b[i] / A[i][nv]);
+      if (!(*min_element(ALLOF(bound)) < INF))
+        return vector_t(); // -infinity
+      int bi = 0;
+      REP(i, m)
+        if (bound[i] < bound[bi]-EPS || (bound[i] < bound[bi]+EPS && bx[i] < bx[bi]))
+          bi = i;
+      double pd = A[bi][nv];
+      REP(j, n+m)
+        A[bi][j] /= pd;
+      b[bi] /= pd;
+      REP(i, m+2) if (i != bi) {
+        double pn = A[i][nv];
+        REP(j, n+m)
+          A[i][j] -= A[bi][j] * pn;
+        b[i] -= b[bi] * pn;
+      }
+      swap(nx[ni], bx[bi]);
+    }
+    if (phase == 0 && abs(b[m]) > EPS)
+      return vector_t(); // no solution
+    A[m].swap(A[m+1]);
+    swap(b[m], b[m+1]);
+  }
+   vector_t x(n+m, 0);
+  REP(i, m)
+    x[bx[i]] = b[i];
+  x.resize(n);
+  return x;
+}
+\end{lstlisting}
+
+\newpage

@@ -1,0 +1,526 @@
+\section{おまもり}
+
+Ultra Thanks to まえはらさん！
+
+
+\subsection{最小直径全域木 (Cuninghame-Green)}
+
+重みつき無向グラフの全域木の中で，直径が最小のものを求める問題を最小直径全域木 (Minimum Diameter Spanning Tree) という．Hassin によりこの問題は Absolute 1-Center と呼ばれる問題と同値であることが明らかにされた．
+
+アルゴリズムの詳細は Cuninghame-Green の論文を参照のこと．全点対間最短路
+が求まっている前提のもとで $\mathrm{O}(V E \log V)$ の計算量が必要となる．
+
+gはグラフ．隣接リスト．戻り値は最小直径全域木の直径
+
+\begin{lstlisting}
+Weight minimumDiameterSpanningTree(const Graph &g) {
+  int n = g.size();
+  Matrix dist(n, Array(n, INF)); // all-pair shortest
+  REP(u, n) dist[u][u] = 0;
+  REP(u, n) FOR(e, g[u]) dist[e->src][e->dst] = e->weight;
+  REP(k, n) REP(i, n) REP(j, n)
+    dist[i][j] = min(dist[i][j], dist[i][k]+dist[k][j]);
+
+  Edges E;
+  REP(u, n) FOR(e, g[u]) if (e->src < e->dst) E.push_back(*e);
+  int m = E.size();
+
+  Weight H = INF;
+  vector<Weight> theta(m);
+  REP(r, m) {
+    int u = E[r].src, v = E[r].dst;
+    Weight d = E[r].weight;
+    REP(w, n) theta[r] = max(theta[r], min(dist[u][w], dist[v][w]));
+    H = min(H, d + 2 * theta[r]);
+  }
+  Weight value = INF;
+  REP(r, m) if (2 * theta[r] <= H) {
+    int u = E[r].src, v = E[r].dst;
+    Weight d = E[r].weight;
+    vector< pair<Weight,Weight> > list;
+    REP(w, n) list.push_back( make_pair(dist[u][w], dist[v][w]) );
+    sort(ALL(list), greater< pair<Weight,Weight> >());
+    int p = 0;
+    value = min(value, 2 * list[0].first);
+    REP(k, n) if (list[p].second < list[k].second)
+      value = min(value, d + list[p].second + list[k].first), p = k;
+    value = min(value, 2 * list[p].second);
+  }
+  return n == 1 ? 0 : value;
+}
+\end{lstlisting}
+
+
+
+
+\subsection{最小全域有向木(Chu-Liu/Edmond)}
+頂点 r を根とする最小全域有向木を求める．
+
+アルゴリズムの概要は次のとおり．まず，各頂点に入る最小の辺だけからなるグラフを作る．このグラフが非巡回的であればこれは求める最小全域木である．巡回的ならば，その部分を一点に縮約し，辺コストを適切に修正し，再帰的に最小全域木を求める．求まった最小全域木に，縮約した部分を矛盾しないように展開していく．$\mathrm{O}(V E)$．
+
+\begin{lstlisting}
+void visit(Graph &h, int v, int s, int r,
+  vector<int> &no, vector< vector<int> > &comp,
+  vector<int> &prev, vector< vector<int> > &next, vector<Weight> &mcost,
+  vector<int> &mark, Weight &cost, bool &found) {
+  const int n = h.size();
+  if (mark[v]) {
+    vector<int> temp = no;
+    found = true;
+    do {
+      cost += mcost[v];
+      v = prev[v];
+      if (v != s) {
+        while (comp[v].size() > 0) {
+          no[comp[v].back()] = s;
+          comp[s].push_back(comp[v].back());
+          comp[v].pop_back();
+        }
+      }
+    } while (v != s);
+    FOR(j,comp[s]) if (*j != r) FOR(e,h[*j])
+      if (no[e->src] != s) e->weight -= mcost[ temp[*j] ];
+  }
+  mark[v] = true;
+  FOR(i,next[v]) if (no[*i] != no[v] && prev[no[*i]] == v)
+    if (!mark[no[*i]] || *i == s)
+      visit(h, *i, s, r, no, comp, prev, next, mcost, mark, cost, found);
+}
+Weight minimumSpanningArborescence(const Graph &g, int r) {
+  const int n = g.size();
+  Graph h(n);
+  REP(u,n) FOR(e,g[u]) h[e->dst].push_back(*e);
+
+  vector<int> no(n);
+  vector< vector<int> > comp(n);
+  REP(u, n) comp[u].push_back(no[u] = u);
+
+  for (Weight cost = 0; ;) {
+    vector<int> prev(n, -1);
+    vector<Weight> mcost(n, INF);
+
+    REP(j,n) if (j != r) FOR(e,g[j])
+      if (no[e->src] != no[j])
+        if (e->weight < mcost[ no[j] ])
+          mcost[ no[j] ] = e->weight, prev[ no[j] ] = no[e->src];
+
+    vector< vector<int> > next(n);
+    REP(u,n) if (prev[u] >= 0)
+      next[ prev[u] ].push_back(u);
+
+    bool stop = true;
+    vector<int> mark(n);
+    REP(u,n) if (u != r && !mark[u] && !comp[u].empty()) {
+      bool found = false;
+      visit(h, u, u, r, no, comp, prev, next, mcost, mark, cost, found);
+      if (found) stop = false;
+    }
+    if (stop) {
+      REP(u,n) if (prev[u] >= 0) cost += mcost[u];
+      return cost;
+    }
+  }
+}
+\end{lstlisting}
+
+
+
+\subsection{最小シュタイナー木 (Dreyfus-Wagner)}
+
+
+Tは部分頂点集合．同じものが複数入っていても平気．
+gは隣接行列．無向性（対称性）を仮定する．つながっていない場合は inf．
+戻り値はシュタイナー木の重み．ただし $\geq$ inf のときは存在しない（連結でない）ことをあらわす．シュタイナー木自体を求めたい場合は，Floyd Warshall の逆再生のように，中継する点を覚える配列を用意すればよい（はず）． $\mathrm{O}(n 3^t + n^2 2^t + n^3)$．大雑把に見て t = 11 程度が限界だと思ってよい．
+
+\begin{lstlisting}
+weight minimum_steiner_tree(const vector<int>& T, const matrix &g) {
+  const int n = g.size();
+  const int numT = T.size();
+  if (numT <= 1) return 0;
+
+  matrix d(g); // all-pair shortest
+  for (int k = 0; k < n; ++k)
+    for (int i = 0; i < n; ++i)
+      for (int j = 0; j < n; ++j)
+        d[i][j] = min( d[i][j], d[i][k] + d[k][j] );
+
+  weight OPT[(1 << numT)][n];
+  for (int S = 0; S < (1 << numT); ++S)
+    for (int x = 0; x < n; ++x)
+      OPT[S][x] = inf;
+
+  for (int p = 0; p < numT; ++p) // trivial case
+    for (int q = 0; q < n; ++q)
+      OPT[1 << p][q] = d[T[p]][q];
+
+  for (int S = 1; S < (1 << numT); ++S) { // DP step
+    if (!(S & (S-1))) continue;
+    for (int p = 0; p < n; ++p)
+      for (int E = 0; E < S; ++E)
+        if ((E | S) == S)
+          OPT[S][p] = min( OPT[S][p], OPT[E][p] + OPT[S-E][p] );
+    for (int p = 0; p < n; ++p)
+      for (int q = 0; q < n; ++q)
+        OPT[S][p] = min( OPT[S][p], OPT[S][q] + d[p][q] );
+  }
+  weight ans = inf;
+  for (int S = 0; S < (1 << numT); ++S)
+    for (int q = 0; q < n; ++q)
+      ans = min(ans, OPT[S][q] + OPT[((1 << numT)-1)-S][q]);
+}
+/* 以下は PKU 3123 用
+weight ans = inf;
+for (int S = 0; S < (1 << numT); ++S) {
+  weight sub = 0;
+  for (int P = 0; P < 4; ++P) {
+    int E = 0, p = -1;
+    for (int k = 0; k < 8; k += 2) 
+      if (((S >> k) & 3) == P)
+        E += 3 << k, p = T[k];
+    sub += (!!E) * OPT[E][p];
+  }
+  ans = min(ans, sub);
+}
+return ans;
+*/
+\end{lstlisting}
+
+
+
+
+\subsection{Gomory-Hu 木}
+
+連結な無向重みつきグラフ G = (V, E) に対し，重みつき木 T が Gomory-Hu 木，またはカット木であるとは，次の二条件を満たすことをいう．
+
+\begin{itemize}
+\item{T の点集合は G の点集合と等しい（辺は制限しない）．}
+\item{mincut(u, v; G) = mincut(u, v; T)．}
+\end{itemize}
+
+任意のグラフに対し，Gomory-Hu 木が存在することが証明できる．
+
+たくさんの点対に対して最小カットを計算しなければならない場合，あらかじめ Gomory-Hu 木を計算しておけば，G の最小カットのかわりに T の最小カットを求めればよくなるため，効率的に計算できる（木の最小カットは経路上の最小重みなので簡単に求まる．
+
+Gomory-Hu 木を計算するアルゴリズムは，まず Gomory と Hu によって，頂点を
+圧縮しながら最大流を O(V) 回計算するものが提案された．その後 Gusfield に
+よってアルゴリズムが整理され，陽に頂点の圧縮を行なう必要の無いアルゴリズ
+ムが提案された．以下の実装は Gusfield の提案したものによる．
+
+O(V MAXFLOW)．
+無向（すべての辺に逆辺がある）グラフ g の Gomory-Hu 木を計算する．内部で隣接行列にしているが，速度に問題がある場合は予め隣接行列にして渡すこと．
+戻り値として Gomory-Hu 木を返す．
+
+\begin{lstlisting}
+#define RESIDUE(s,t) (capacity[s][t]-flow[s][t])
+Graph cutTree(const Graph &g) {
+  int n = g.size();
+  Matrix capacity(n, Array(n)), flow(n, Array(n));
+  REP(u,n) FOR(e,g[u]) capacity[e->src][e->dst] += e->weight;
+
+  vector<int> p(n), prev;
+  vector<Weight> w(n);
+  for (int s = 1; s < n; ++s) {
+    int t = p[s]; // max-flow(s, t)
+    REP(i,n) REP(j,n) flow[i][j] = 0;
+    Weight total = 0;
+    while (1) {
+      queue<int> Q; Q.push(s);
+      prev.assign(n, -1); prev[s] = s;
+      while (!Q.empty() && prev[t] < 0) {
+        int u = Q.front(); Q.pop();
+        FOR(e,g[u]) if (prev[e->dst] < 0 && RESIDUE(u, e->dst) > 0) {
+          prev[e->dst] = u;
+          Q.push(e->dst);
+        }
+      }
+      if (prev[t] < 0) goto esc;
+      Weight inc = INF;
+      for (int j = t; prev[j] != j; j = prev[j])
+        inc = min(inc, RESIDUE(prev[j], j));
+      for (int j = t; prev[j] != j; j = prev[j])
+        flow[prev[j]][j] += inc, flow[j][prev[j]] -= inc;
+      total += inc;
+    }
+esc:w[s] = total; // make tree
+    REP(u, n) if (u != s && prev[u] != -1 && p[u] == t)
+      p[u] = s;
+    if (prev[p[t]] != -1)
+      p[s] = p[t], p[t] = s, w[s] = w[t], w[t] = total;
+  }
+  Graph T(n); // (s, p[s]) is a tree edge of weight w[s]
+  REP(s, n) if (s != p[s]) {
+    T[  s ].push_back( Edge(s, p[s], w[s]) );
+    T[p[s]].push_back( Edge(p[s], s, w[s]) );
+  }
+  return T;
+}
+
+// Gomory-Hu tree を用いた最大流 O(n)
+Weight maximumFlow(const Graph &T, int u, int t, int p = -1, Weight w = INF) {
+  if (u == t) return w;
+  Weight d = INF;
+  FOR(e, T[u]) if (e->dst != p)
+    d = min(d, maximumFlow(T, e->dst, t, u, min(w, e->weight)));
+  return d;
+}
+\end{lstlisting}
+
+
+
+\subsection{グラフの同型性判定}
+
+今のところこの問題は NP 完全かどうかすらわかっていない（多くの人は NP 完全ではないが P でもないと信じていると思う）．しかしバックトラックによる枝刈り付の全探索が多くの場合うまくいくことが実験によって分かっており，ランダムグラフに対しては $\mathrm{O}(V \log V)$ で動くことも知られている．
+
+以下の実装は次のアルゴリズムによる．
+
+\begin{itemize}
+\item{g, h の頂点を次数の小さい順にソートする．}
+\item{同じ次数のものに対して頂点を対応させてみる．}
+\item{それまでに対応を作った部分と整合性を確かめる．}
+\item{整合していれば再帰的にチェックする．}
+\end{itemize}
+
+具体的な置換は p: gs[i].index → hs[i].index で与えられる．
+
+\begin{lstlisting}
+typedef vector< vector<int> > Matrix;
+
+typedef pair<int, int> VertexInfo;
+#define index second
+#define degree first
+bool permTest(int k, const Matrix &g, const Matrix &h,
+    vector<VertexInfo> &gs, vector<VertexInfo> &hs) {
+  const int n = g.size();
+  if (k >= n) return true;
+  for (int i = k; i < n && hs[i].degree == gs[k].degree; ++i) {
+    swap(hs[i], hs[k]);
+    int u = gs[k].index, v = hs[k].index;
+    for (int j = 0; j <= k; ++j) {
+      if (g[u][gs[j].index] != h[v][hs[j].index]) goto esc;
+      if (g[gs[j].index][u] != h[hs[j].index][v]) goto esc;
+    }
+    if (permTest(k+1, g, h, gs, hs)) return true;
+esc:swap(hs[i], hs[k]);
+  }
+  return false;
+}
+bool isomorphism(const Matrix &g, const Matrix &h) {
+  const int n = g.size();
+  if (h.size() != n) return false;
+  vector<VertexInfo> gs(n), hs(n);
+  REP(i, n) {
+    gs[i].index = hs[i].index = i;
+    REP(j, n) {
+      gs[i].degree += g[i][j];
+      hs[j].degree += h[i][j];
+    }
+  }
+  sort(ALL(gs)); sort(ALL(hs));
+  REP(i, n) if (gs[i].degree != hs[i].degree) return false;
+
+  return permTest(0, g, h, gs, hs);
+}
+\end{lstlisting}
+
+
+
+\subsection{最小包含球}
+
+平均 $\mathrm{O}(2^d n)$．
+
+
+\begin{lstlisting}
+struct min_ball {
+  point center; // 最小包含球の中心．
+  number radius2; // 最小包含球の半径の二乗．
+  // 新しい点を min_ball に含めるべき点列に加える．
+  void add(const point& p) {
+    ps.push_back(p);
+  }
+  // 加えられている点から最小包含球を求める．
+  void compile() {
+    m = 0;
+    center.resize(dim, 0);
+    radius2 = -1;
+    make_ball(ps.end());
+  }
+  // 最小包含球を張る点を OUT にコピーする．
+  // 表面にあるすべての点ではないので注意．そちらは半径と中心から再計算すること．
+  template <class OUT>
+  void support(OUT out) {
+    copy(ps.begin(), supp_end, out);
+  }
+  min_ball() {
+    for (int i = 0; i <= dim; ++i) {
+      c[i].resize(dim, 0);
+      v[i].resize(dim, 0);
+    }
+  }
+private:
+  list<point> ps;
+  list<point>::iterator supp_end;
+  int m;
+  point v[dim+1], c[dim+1];
+  number z[dim+1], r[dim+1];
+  void pop() { --m; }
+  void push(const point& p) {
+    if (m == 0) {
+      c[0] = p; r[0] = 0;
+    } else {
+      number e = dist2(p, c[m-1]) - r[m-1];
+      point delta = p - c[0];
+      v[m] = p - c[0];
+      for (int i = 1; i < m; ++i)
+        v[m] -= v[i] * dot(v[i], delta) / z[i];
+      z[m] = dot(v[m], v[m]);
+      c[m] = c[m-1] + e*v[m]/z[m]/2;
+      r[m] = r[m-1] + e*e/z[m]/4;
+    }
+    center  = c[m];
+    radius2 = r[m]; ++m;
+  }
+  void make_ball(list<point>::iterator i) {
+    supp_end = ps.begin();
+    if (m == dim + 1) return;
+    for (list<point>::iterator k = ps.begin(); k != i; ) {
+      list<point>::iterator j = k++;
+      if (dist2(*j, center) > radius2) {
+        push(*j); make_ball(j); pop();
+        move_to_front(j);
+      }
+    }
+  }
+  void move_to_front(list<point>::iterator j) {
+    if (supp_end == j) ++supp_end;
+    ps.splice (ps.begin(), ps, j);
+  }
+};
+\end{lstlisting}
+
+
+
+\subsection{ドロネー三角形分割 (逐次添加法)}
+
+$\mathrm{O}(n^2)$. 
+
+\begin{lstlisting}
+bool incircle(point a, point b, point c, point p) {
+  a -= p; b -= p; c -= p;
+  return norm(a) * cross(b, c)
+       + norm(b) * cross(c, a)
+       + norm(c) * cross(a, b) >= 0; // < : inside, = cocircular, > outside
+}
+#define SET_TRIANGLE(i, j, r) \
+  E[i].insert(j); em[i][j] = r; \
+  E[j].insert(r); em[j][r] = i; \
+  E[r].insert(i); em[r][i] = j; \
+  S.push(pair<int,int>(i, j));
+#define REMOVE_EDGE(i, j) \
+  E[i].erase(j); em[i][j] = -1; \
+  E[j].erase(i); em[j][i] = -1;
+#define DECOMPOSE_ON(i,j,k,r) { \
+  int m = em[j][i]; REMOVE_EDGE(j,i); \
+  SET_TRIANGLE(i,m,r); SET_TRIANGLE(m,j,r); \
+  SET_TRIANGLE(j,k,r); SET_TRIANGLE(k,i,r); }
+#define DECOMPOSE_IN(i,j,k,r) { \
+  SET_TRIANGLE(i,j,r); SET_TRIANGLE(j,k,r); \
+  SET_TRIANGLE(k,i,r); }
+#define FLIP_EDGE(i,j) { \
+  int k = em[j][i]; REMOVE_EDGE(i,j); \
+  SET_TRIANGLE(i,k,r); SET_TRIANGLE(k,j,r); }
+#define IS_LEGAL(i, j) \
+  (em[i][j] < 0 || em[j][i] < 0 || \
+  !incircle(P[i],P[j],P[em[i][j]],P[em[j][i]]))
+double Delaunay(vector<point> P) {
+  const int n = P.size();
+  P.push_back( point(-inf,-inf) );
+  P.push_back( point(+inf,-inf) );
+  P.push_back( point(  0 ,+inf) );
+  int em[n+3][n+3]; memset(em, -1, sizeof(em));
+  set<int> E[n+3];
+  stack< pair<int,int> > S;
+  SET_TRIANGLE(n+0, n+1, n+2);
+  for (int r = 0; r < n; ++r) {
+    int i = n, j = n+1, k;
+    while (1) {
+      k = em[i][j];
+      if      (ccw(P[i], P[em[i][j]], P[r]) == +1) j = k;
+      else if (ccw(P[j], P[em[i][j]], P[r]) == -1) i = k;
+      else break;
+    }
+    if      (ccw(P[i], P[j], P[r]) != +1) { DECOMPOSE_ON(i,j,k,r); }
+    else if (ccw(P[j], P[k], P[r]) != +1) { DECOMPOSE_ON(j,k,i,r); }
+    else if (ccw(P[k], P[i], P[r]) != +1) { DECOMPOSE_ON(k,i,j,r); }
+    else                                  { DECOMPOSE_IN(i,j,k,r); }
+    while (!S.empty()) {
+      int u = S.top().first, v = S.top().second; S.pop();
+      if (!IS_LEGAL(u, v)) FLIP_EDGE(u, v);
+    }
+  }
+  double minarg = 1e5;
+  for (int a = 0; a < n; ++a) {
+    for (set<int>::iterator itr = E[a].begin(); itr != E[a].end(); ++itr) {
+      int b = *itr, c = em[a][b];
+      if (b < n && c < n) {
+        point p = P[a] - P[b], q = P[c] - P[b];
+        minarg = min(minarg, acos(dot(p,q)/abs(p)/abs(q)));
+      }
+    }
+  }
+  return minarg;
+}
+\end{lstlisting}
+
+
+
+\subsection{最大マッチング (Edmonds)}
+
+$\mathrm{O}(V^3)$．
+
+\begin{lstlisting}
+#define EVEN(x) (mu[x] == x || (mu[x] != x && phi[mu[x]] != mu[x]))
+#define ODD(x)  (mu[x] != x && phi[mu[x]] == mu[x] && phi[x] != x)
+#define OUTER(x) (mu[x] != x && phi[mu[x]] == mu[x] && phi[x] == x)
+int maximumMatching(const Graph &g, Edges &matching) {
+  int n = g.size();
+  vector<int> mu(n), phi(n), rho(n), scanned(n);
+  REP(v,n) mu[v] = phi[v] = rho[v] = v; // (1) initialize
+  for (int x = -1; ; ) {
+    if (x < 0) {                        // (2) select even
+      for (x = 0; x < n && (scanned[x] || !EVEN(x)); ++x);
+      if (x == n) break;
+    }
+    int y = -1;                         // (3) select incident
+    FOR(e, g[x]) if (OUTER(e->dst) || (EVEN(e->dst) && rho[e->dst] != rho[x])) y = e->dst;
+    if (y == -1) scanned[x] = true, x = -1;
+    else if (OUTER(y)) phi[y] = x;      // (4) growth
+    else {
+      vector<int> dx(n, -2), dy(n, -2); // (5,6), !TRICK! x % 2 --> x >= 0
+      for (int k = 0, w = x; dx[w] < 0; w = k % 2 ? mu[w] : phi[w]) dx[w] = k++;
+      for (int k = 0, w = y; dy[w] < 0; w = k % 2 ? mu[w] : phi[w]) dy[w] = k++;
+      bool vertex_disjoint = true;
+      REP(v,n) if (dx[v] >= 0 && dy[v] > 0) vertex_disjoint = false;
+      if (vertex_disjoint) {            // (5) augment
+        REP(v,n) if (dx[v] % 2) mu[phi[v]] = v, mu[v] = phi[v];
+        REP(v,n) if (dy[v] % 2) mu[phi[v]] = v, mu[v] = phi[v];
+        mu[x] = y; mu[y] = x; x = -1;
+        REP(v,n) phi[v] = rho[v] = v, scanned[v] = false;
+      } else {                          // (6) shrink
+        int r = x, d = n;
+        REP(v,n) if (dx[v] >= 0 && dy[v] >= 0 && rho[v] == v && d > dx[v]) d = dx[v], r = v;
+        REP(v,n) if (dx[v] <= d && dx[v] % 2 && rho[phi[v]] != r) phi[phi[v]] = v;
+        REP(v,n) if (dy[v] <= d && dy[v] % 2 && rho[phi[v]] != r) phi[phi[v]] = v;
+        if (rho[x] != r) phi[x] = y;
+        if (rho[y] != r) phi[y] = x;
+        REP(v,n) if (dx[rho[v]] >= 0 || dy[rho[v]] >= 0) rho[v] = r;
+      }
+    }
+  }
+  matching.clear();
+  REP(u,n) if (u < mu[u]) matching.push_back( Edge(u, mu[u]) );
+  return matching.size(); // make explicit matching
+}
+\end{lstlisting}
+
+
+\newpage

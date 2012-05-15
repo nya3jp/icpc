@@ -1,0 +1,274 @@
+\section{数学}
+
+
+
+\subsection{エラトステネスの篩}
+
+\accepted{PKU2689 Prime Distance}
+
+\begin{code}
+#define MAX_PRIME 1000000
+bool isprime[MAX_PRIME+1];
+vector<int> primes;
+void init_prime() {
+    isprime[0] = isprime[1] = false;
+    fill(isprime+2, isprime+MAX_PRIME+1, true);
+    for(int i = 2; i <= MAX_PRIME; i++) {
+        if (isprime[i]) {
+            primes.push_back(i);
+            for(int j = i*2; j <= MAX_PRIME; j += i)
+                isprime[j] = false;
+        }
+    }
+}
+\end{code}
+
+
+
+
+\subsection{互除法}
+
+\accepted{UVA700 Date Bugs}
+
+\subsubsection{ユークリッド互除法}
+
+\begin{code}
+integer gcd(integer a, integer b) {
+    return (b == 0 ? a : gcd(b, a%b));
+}
+integer lcm(integer a, integer b) {
+    return a/gcd(a, b)*b;
+}
+\end{code}
+
+
+
+\subsubsection{拡張ユークリッド互除法}
+
+$a x + b y = \rm{gcd}(a, b)$ となる$x$, $y$を求める。
+
+\begin{code}
+void xgcd(integer a, integer b, integer& x, integer& y) {
+    if (b == 0)
+        x = 1, y = 0;
+    else
+        xgcd(b, a%b, y, x), y -= a/b*x;
+}
+\end{code}
+
+
+
+
+\subsection{ディオファントス方程式}
+
+$a n = b \pmod{m}$ となる、非負でかつ最小の$n$を求める。
+解がない場合は\verb|no_solution|をthrowする。
+$a$, $b$, $m$は非負である必要がある。
+
+\begin{code}
+struct no_solution {};
+integer divide(integer a, integer b, integer m) {
+    integer g = gcd(a, m);
+    if (b%g != 0)
+        throw no_solution();
+    integer x, y;
+    xgcd(a, m, x, y);
+    assert(a*x+m*y == gcd(a,m));
+    integer n = x*b/g;
+    integer dn = m/g;
+    n -= n/dn*dn;
+    if (n < 0)
+        n += dn;
+    return n;
+}
+\end{code}
+
+
+
+
+
+
+
+
+
+
+\subsection{行列演算}
+
+\accepted{PKU2118 Firepersons}
+
+\accepted{ZJU2525 Restore the Polygon}
+
+
+
+\paragraph{基礎}
+
+　%全角すぺーす
+
+\begin{code}
+typedef double* vector_t;
+typedef vector_t* matrix_t;
+matrix_t new_matrix(int n) {
+    matrix_t x = new vector_t[n];
+    for(int i = 0; i < n; i++)
+        x[i] = new double[n];
+    return x;
+}
+matrix_t dup_matrix(matrix_t x_, int n) {
+    matrix_t x = new_matrix(n);
+    for(int i = 0; i < n; i++)
+        copy(x_[i], x_[i]+n, x[i]);
+    return x;
+}
+void delete_matrix(matrix_t x, int n) {
+    for(int i = 0; i < n; i++)
+        delete[] x[i];
+    delete[] x;
+}
+\end{code}
+
+
+
+\paragraph{掛け算}
+
+　%全角すぺーす
+
+\begin{code}
+matrix_t multiply(matrix_t a, matrix_t b, int n) {
+
+    matrix_t r = new_matrix(n);
+
+    for(int i = 0; i < n; i++) {
+        for(int j = 0; j < n; j++) {
+            r[i][j] = 0;
+            for(int k = 0; k < n; k++)
+                r[i][j] += a[i][k] * b[k][j];
+        }
+    }
+
+    return r;
+}
+\end{code}
+
+
+
+\paragraph{べき乗}
+
+　%全角すぺーす
+
+\begin{code}
+matrix_t pow(matrix_t e, int n, int m) {
+
+    matrix_t r = new_matrix(n);
+
+    for(int i = 0; i < n; i++)
+        for(int j = 0; j < n; j++)
+            r[i][j] = ((m&1) == 0 ? (i == j ? 1 : 0) : e[i][j]);
+
+    if (m >= 2) {
+        matrix_t u = pow(e, n, m/2);
+        matrix_t uu = multiply(u, u, n);
+        matrix_t z = multiply(r, uu, n);
+        delete_matrix(u, n);
+        delete_matrix(uu, n);
+        delete_matrix(r, n);
+        r = z;
+    }
+
+    return r;
+}
+\end{code}
+
+
+
+\paragraph{LU分解}
+
+$a$を破壊してLU形式に変換する。$p$にはint[n]を渡す。
+
+\begin{code}
+bool lu_decompose(matrix_t a, int* p, int n) {
+
+    for(int i = 0; i < n; i++)
+        p[i] = i;
+
+    for(int k = 0; k < n; k++) {
+
+        int pivot = k;
+        for(int i = k+1; i < n; i++)
+            if (abs(a[i][k]) > abs(a[pivot][k]))
+                pivot = i;
+
+        swap(a[k], a[pivot]);
+        swap(p[k], p[pivot]);
+
+        if (abs(a[k][k]) < EP)
+            return false;
+
+        for(int i = k+1; i < n; i++) {
+            double m = (a[i][k] /= a[k][k]);
+            for(int j = k+1; j < n; j++)
+                a[i][j] -= a[k][j] * m;
+        }
+
+    }
+
+    return true;
+}
+void lu_solve(matrix_t a, int* p, vector_t b, vector_t x, int n) {
+
+    for(int i = 0; i < n; i++)
+        x[i] = b[p[i]];
+
+    for(int k = 0; k < n; k++)
+        for(int i = 0; i < k; i++)
+            x[k] -= a[k][i] * x[i];
+
+    for(int k = n-1; k >= 0; k--) {
+        for(int i = k+1; i < n; i++)
+            x[k] -= a[k][i] * x[i];
+        x[k] /= a[k][k];
+    }
+
+}
+\end{code}
+
+
+
+\paragraph{ガウスの消去法}
+
+$a$, $b$は破壊され、答えが$b$に返る
+
+\begin{code}
+bool gauss(matrix_t a, vector_t b, int n) {
+
+    for(int k = 0; k < n; k++) {
+
+        int p = k;
+        for(int i = k+1; i < n; i++)
+            if (abs(a[i][k]) > abs(a[p][k]))
+                p = i;
+
+        swap(a[k], a[p]);
+        swap(b[k], b[p]);
+
+        if (abs(a[k][k]) < EP)
+            return false;
+
+        for(int i = k+1; i < n; i++) {
+            double m = a[i][k] / a[k][k];
+            for(int j = k+1; j < n; j++)
+                a[i][j] -= a[k][j] * m;
+            b[i] -= b[k] * m;
+        }
+
+    }
+
+    for(int k = n-1; k >= 0; k--) {
+        for(int i = k+1; i < n; i++)
+            b[k] -= a[k][i] * b[i];
+        b[k] /= a[k][k];
+    }
+
+    return true;
+}
+\end{code}
+

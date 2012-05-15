@@ -1,0 +1,39 @@
+\def\batchfile{geometry.ins}
+\input docstrip
+
+\ifx\generate\undefined
+  \Msg{**********************************************}
+  \Msg{* This installation requires docstrip}
+  \Msg{* version 2.4 or later.}
+  \Msg{* An older version of docstrip has been input}
+  \Msg{**********************************************}
+  \errhelp{Move or rename old docstrip.tex and get a newer one.}
+  \errmessage{Old docstrip in input path}
+  \batchmode
+  \csname @@end\endcsname\end
+\fi
+
+\keepsilent
+\preamble
+\endpreamble
+\generateFile{geometry.sty}{f}{\from{geometry.dtx}{package}}
+\generateFile{geometry.cfg}{f}{\from{geometry.dtx}{config}}
+\generateFile{geometry.drv}{f}{\from{geometry.dtx}{driver}}
+\generateFile{manual.drv}{f}{\from{geometry.dtx}{manual}}
+
+\Msg{***************************************************************}
+\Msg{*}
+\Msg{* \space Copy the files listed below into a TeX searchable directory.}
+\Msg{* \@spaces geometry.sty}
+\Msg{* \@spaces geometry.cfg}
+\Msg{*}
+\Msg{* \space To get geometry documentation,}
+\Msg{* \@spaces latex geometry.drv \space or}
+\Msg{* \@spaces pdflatex manual.drv\space (for A4 PDF).}
+\Msg{* \space Repeat it three times to get cross-references right.}
+\Msg{*}
+\Msg{***************************************************************}
+
+\endinput
+
+

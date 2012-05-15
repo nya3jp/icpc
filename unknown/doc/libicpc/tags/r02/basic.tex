@@ -1,0 +1,59 @@
+\section{基礎}
+
+\subsection{テンプレート}
+
+\begin{code}
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <deque>
+#include <queue>
+#include <set>
+#include <map>
+#include <algorithm>
+#include <iterator>
+#include <functional>
+#include <utility>
+#include <numeric>
+#include <complex>
+#include <cstdio>
+#include <cmath>
+#include <cctype>
+#include <cassert>
+using namespace std;
+
+#define REP(i,n) for(int i = 0; i < (int)(n); i++)
+#define FOR(i,c) for(__typeof((c).begin()) i = (c).begin(); i != (c).end(); ++i)
+#define ALLOF(c) ((c).begin()), ((c).end())
+#define IN(i,l,u) ((l) <= (i) && (i) < (u))
+
+ifstream cin("_.txt");
+
+int main() {
+    return 0;
+}
+
+// Powered by Fate Testarossa
+\end{code}
+
+
+
+\subsection{小数比較}
+
+\begin{code}
+#define EP 1.0e-10
+inline int SGN(double a) { return abs(a) < EP ? 0 : a > 0 ? 1 : -1; }
+#define EQ(a,b) (SGN((a)-(b)) == 0)    // equal
+#define NE(a,b) (SGN((a)-(b)) != 0)    // not equal
+#define LE(a,b) (SGN((a)-(b)) <= 0)    // less or equal
+#define LT(a,b) (SGN((a)-(b)) <  0)    // less
+#define GE(a,b) (SGN((a)-(b)) >= 0)    // greater or equal
+#define GT(a,b) (SGN((a)-(b)) >  0)    // greater
+\end{code}
+
+
+
+
+
+

@@ -1,0 +1,497 @@
+\section{グラフ}
+
+\subsection{基本データ構造}
+
+\begin{code}
+typedef double Weight;
+const Weight WEIGHT_INFTY = numeric_limits<Weight>::max() / 4;
+struct Edge {
+    int src, dest;
+    Weight weight;
+};
+bool operator>(const Edge& a, const Edge& b) {
+    return (a.weight > b.weight);
+}
+typedef vector<Edge> Edges;
+typedef vector<Edges> Graph; // 標準的な重みつきグラフの隣接リスト表現
+typedef vector< vector<Weight> > WMatrix; // 重み行列
+typedef vector< vector<int> > AList;      // 重みなし隣接リスト
+\end{code}
+
+\subsection{一対全最短経路(Dijkstra)}
+
+\accepted{UVA10525 NEW TO BANGLADESH?}
+
+$O(E \log V)$ 。
+パスの重みは非負でなければならない。
+
+\begin{code}
+Graph g;
+vector<int> trace;
+
+Weight shortest(int start, int goal) {
+    int n = g.size();
+    trace.assign(n, -2); // UNREACHABLE
+
+    priority_queue<Edge, vector<Edge>, greater<Edge> > q;
+    q.push((Edge){-1, start, 0}); // TERMINAL
+
+    while(!q.empty()) {
+        Edge e = q.top();
+        q.pop();
+        if (trace[e.dest] >= 0)
+            continue;
+        trace[e.dest] = e.src;
+        if (e.dest == goal)
+            return e.weight;
+        FOR(it, g[e.dest])
+            if (trace[it->dest] == -2)
+                q.push((Edge){it->src, it->dest, e.weight + it->weight});
+    }
+    return -1;
+}
+
+vector<int> buildRoute(int goal) {
+    if (trace[goal] == -2)
+        return vector<int>(); // UNREACHABLE
+    vector<int> route;
+    for(int i = goal; i >= 0; i = trace[i])
+        route.push_back(i);
+    reverse(route.begin(), route.end());
+    return route;
+}
+\end{code}
+
+\subsection{全対全最短経路(Warshall-Floyd)}
+
+\accepted{UVAArchive3569 World Finals 2005 Degrees of Separation}
+
+$O(V^3)$ 。
+\verb|WEIGHT_INFTY|のオーバーフローが起こらないように気をつけること。
+
+\begin{code}
+WMatrix g;
+vector< vector<int> > trace;
+
+void shortest() {
+    int n = g.size();
+    trace.assign(n, vector<int>(n, -1));
+    REP(j, n) REP(i, n) REP(k, n)
+        if (g[i][k] > g[i][j] + g[j][k])
+            g[i][k] = g[i][j] + g[j][k] ,
+                trace[i][k] = j;
+}
+void buildRoute(vector<int>& route, int src, int dest, bool rec = false) {
+    if (!rec)
+        route.clear();
+    int inter = trace[src][dest];
+    if (inter < 0)
+        route.push_back(src);
+    else
+        buildRoute(route, src, inter, true) ,
+            buildRoute(route, inter, dest, true);
+    if (!rec)
+        route.push_back(dest);
+}
+\end{code}
+
+
+\subsection{一対全最短経路(Bellman-ford)}
+
+\nottested
+
+$O(VE)$ 。
+枝の重みが負である場合に使う。負のサイクルがある場合は\verb|false|を返す。
+
+\begin{code}
+Graph g;
+
+bool shortest(int start, vector<Weight> costs, vector<int> trace) {
+    int n = g.size();
+    costs.assign(n, WEIGHT_INFTY);
+    trace.assign(n, -2);  // UNREACHABLE
+    costs[start] = 0;
+    trace[start] = -1;    // TERMINAL
+
+    REP(k, n) REP(a, n) {
+        if (costs[a] != WEIGHT_INFTY) {
+            FOR(it, g[a]) {
+                int b = it->dest;
+                Weight w = costs[a] + it->weight;
+                if (w < costs[b]) {
+                    costs[b] = w;
+                    trace[b] = a;
+                }
+            }
+        }
+    }
+    REP(a, n) FOR(it, g[a]) // negative cycleのチェック
+        if (costs[a] + it->weight < costs[it->dest])
+            return false;
+    return true;
+}
+\end{code}
+
+\subsection{オンライン同値類判定 (Union-Find)}
+
+\accepted{UVA10600 ACM CONTEST AND BLACKOUT}
+
+\verb|-data[find_root(i)]|はノード\verb|i|が属する集合の大きさになっている。
+
+\begin{code}
+int n;
+vector<int> data(n, -1);
+bool link(int a, int b) { // 新たな併合を行うとtrue
+    int ra = find_root(a);
+    int rb = find_root(b);
+    if (ra != rb) {
+        if (data[rb] < data[ra])
+            swap(ra, rb);
+        data[ra] += data[rb];
+        data[rb] = ra;
+    }
+    return (ra != rb);
+}
+bool check(int a, int b) { // 同じ集合ならtrue
+    return (find_root(a) == find_root(b));
+}
+int find_root(int a) { // 代表元を返す
+    return ((data[a] < 0) ? a : (data[a] = find_root(data[a])));
+}
+\end{code}
+
+\subsection{最小全域木(Prim)}
+
+\accepted{UVA10034 Freckles}
+
+ノード0が属する連結成分の最小全域木を求める。戻り値は\verb|(木の重み, 木)|。
+
+\begin{code}
+pair<Weight, Edges> prim(Graph& g) {
+    int n = g.size();
+    priority_queue<Edge, vector<Edge>, greater<Edge> > q;
+    vector<bool> visited(n, false);
+    Edges tree;
+    Weight weight = 0;
+
+    q.push((Edge){-1, 0, 0});
+    while(!q.empty()) {
+        Edge e = q.top();
+        q.pop();
+        if (visited[e.dest])
+            continue;
+        visited[e.dest] = true;
+        if (e.src >= 0) {
+            tree.push_back(e);
+            weight += e.weight;
+        }
+        FOR(it, g[e.dest])
+            if (!visited[it->dest])
+                q.push(*it);
+    }
+    return make_pair(weight, tree);
+}
+\end{code}
+
+
+\subsection{最小全域森(Kruskal)}
+
+\accepted{UVA10600 ACM CONTEST AND BLACKOUT}
+
+\todo{priority queueは必要ない}
+
+$O(E \log E)$ 。
+最小全域森を求める。要UnionFind。戻り値は\verb|(森の重み, 森)|。
+Union-Findが必要。
+
+\begin{code}
+pair<Weight, Edges> kruskal(Graph& g) {
+    int n = g.size();
+    priority_queue<Edge, vector<Edge>, greater<Edge> > q;
+    UnionFind uf(n);
+    REP(a, n) FOR(it, g[a])
+        if (a < it->dest)
+            q.push(*it);
+    Edges tree;
+    Weight weight = 0;
+    while(!q.empty() && (int)tree.size() < n-1) {
+        Edge e = q.top();
+        q.pop();
+        if (uf.link(e.src, e.dest))
+            tree.push_back(e) ,
+                weight += e.weight;
+    }
+    return make_pair(weight, tree);
+}
+\end{code}
+
+
+
+% さくじょ
+
+% \subsection{トポロジカルソート}
+
+% \nottested
+
+% \begin{code}
+% Graph g;
+% vector<int> order;
+% vector<bool> visited;
+
+% void sort() {
+%     int n = g.size();
+%     order.clear();
+%     visited.assign(n, false);
+%     REP(a, n) dfs(a);
+% }
+% void dfs(int a) {
+%     if (visited[a])
+%         return;
+%     visited[a] = true;
+%     FOR(it, g[a]) dfs(it->dest);
+%     order.push_back(a);
+% }
+% \end{code}
+
+
+\subsection{二部グラフの最大マッチング}
+
+\accepted{UVA10080 GopherII}
+
+\derived{IHI Library}
+
+$O(mn^2)$ 。最大マッチングの大きさは最小点被覆の大きさに一致する。
+
+\begin{code}
+int n, m;                 // 左右のノード数
+vector< vector<int> > g;  // グラフ (left-index -> [right-index])
+vector<int> z;            // マッチング (right-index -> left-index)
+vector<bool> v;           // visited flag
+
+BGM(int n, int m) : n(n), m(m), g(n) {}
+void add_edge(int a, int b) {
+    g[a].push_back(b);
+}
+int match() {
+    z.assign(m, -1);
+    int matches = 0;
+    REP(a, n) {
+        v.assign(m, false);
+        if (augment(a))
+            matches++;
+    }
+    return matches;
+}
+bool augment(int a) {
+    if (a < 0),
+        return true;
+    vector<int>& e = g[a];
+    REP(i, e.size()) {
+        int b = e[i];
+        if (!v[b]) {
+            v[b] = true;
+            if (augment(z[b])) {
+                z[b] = a;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+\end{code}
+
+
+
+\subsection{二部グラフの辺彩色}
+
+\accepted{UVA10615 Rooks}
+
+\begin{code}
+int n, m;                 // 左右のノード数
+vector< vector<int> > g;  // グラフ (index -> [index])
+vector< vector<int> > cl; // 色づけ (index -> color -> index)
+
+BGEC(int n, int m) : n(n), m(m), g(n+m) {}
+void add_edge(int a, int b) { // 左a、右bの間に辺を張る
+    g[a].push_back(n+b);
+    g[n+b].push_back(a);
+}
+int color() {
+    int d = 0; // 彩色数
+    REP(i, n+m)
+        d = max<int>(d, g[i].size());
+    cl.assign(n+m, vector<int>(d, -1));
+    REP(a, n) REP(i, g[a].size()) {
+        int b = g[a][i];
+        int ca = min_element(ALLOF(cl[a])) - cl[a].begin();
+        int cb = min_element(ALLOF(cl[b])) - cl[b].begin();
+        if (ca != cb) {
+            augment(b, ca, cb);
+            cb = ca;
+        }
+        cl[a][ca] = b;
+        cl[b][cb] = a;
+    }
+    return d;
+}
+void augment(int a, int c1, int c2) {
+    int b = cl[a][c1];
+    if (b >= 0) {
+        augment(b, c2, c1);
+        cl[b][c2] = a;
+        cl[a][c1] = -1;
+    }
+    cl[a][c2] = b;
+}
+\end{code}
+
+
+\subsection{最大流(Edmonds-Karp)}
+
+\accepted{UVA10330 Power Transmitter}
+
+\derived{IHI Library}
+
+\begin{code}
+WMatrix g;
+
+#define RESIDUE(from,to) (g[from][to] - (f[from][to] - f[to][from]))
+Weight max_flow(int s, int t) {
+    int n = g.size();
+    WMatrix f(n, vector<Weight>(n, 0));
+    Weight flow = 0;
+    while(true) {
+        queue<int> q;
+        q.push(s);
+        vector<int> trace(n, -1);
+        trace[s] = s;
+        while(!q.empty() && trace[t] < 0) {
+            int i = q.front();
+            q.pop();
+            REP(j, n)
+                if (trace[j] < 0 && RESIDUE(i, j) > 0)
+                    trace[j] = i ,
+                        q.push(j);
+        }
+        if (trace[t] < 0)
+            break;
+        Weight w = WEIGHT_INFTY;
+        for(int j = t; trace[j] != j; j = trace[j])
+            w = min(w, RESIDUE(trace[j], j));
+        for(int j = t; trace[j] != j; j = trace[j])
+            f[trace[j]][j] += w;
+        flow += w;
+    }
+    return flow;
+}
+\end{code}
+
+
+\subsection{強連結成分分解}
+
+\nottested
+
+\derived{IHI Library}
+
+\begin{code}
+Graph g;
+vector<bool> visited;
+
+vector< vector<int> > scc() {
+    int n = g.size();
+    Graph r(n);   // make reversed graph
+    REP(a, n) FOR(it, g[a])
+        r[it->dest].push_back((Edge){it->dest, it->src});
+    vector<int> order;
+    visited.assign(n, false);
+    REP(i, n) dfs(i, order);
+    reverse(order.begin(), order.end());
+    g.swap(r);
+    vector< vector<int> > components;
+    visited.assign(n, false);
+    REP(i, n)
+        if (!visited[order[i]])
+            components.push_back(vector<int>()) ,
+                dfs(order[i], components.back());
+    g.swap(r);
+    return components;
+}
+void dfs(int a, vector<int>& order) {
+    if (visited[a])
+        return;
+    visited[a] = true;
+    FOR(it, g[a]) dfs(it->dest, order);
+    order.push_back(a);
+}
+\end{code}
+
+\subsection{関節点}
+
+\nottested
+
+\todo{二重連結成分分解を書く}
+
+戻り値は各ノードが取り除かれたときに新たにできる分裂の数に対応する。
+
+\begin{code}
+AList g;
+vector<int> depths;
+vector<int> counts;
+
+void count() {
+    int n = g.size();
+    depths.assign(n, -1);
+    counts.assign(n, 0);
+    REP(a, n) {
+        if (depths[a] >= 0)
+            continue;
+        dfs(a, 0);
+        if (counts[a] > 0)
+            counts[a]--;
+    }
+}
+int dfs(int a, int cur) {
+    depths[a] = cur;
+    int upper = cur;
+    FOR(it, g[a]) {
+        int b = *it;
+        int u = depths[b];
+        if (u < 0) {
+            u = dfs(b, cur+1);
+            if (u >= cur)
+                counts[a]++;
+        }
+        upper = min(upper, u);
+    }
+    return upper;
+}
+\end{code}
+
+\subsection{オイラー路}
+
+\accepted{UVA10054 The Necklace}
+
+\begin{code}
+vector<int> tour(const AList& g_, int start) {
+    AList g(g_);
+    int n = g.size();
+    vector<int> route;
+    int odds = 0;
+    REP(i, n)
+        if (g[i].size()%2 != 0)
+            odds++;
+    if (odds == 0 || (odds == 2 && g[start].size()%2 == 1))
+        dfs(g, start, route);
+    reverse(route.begin(), route.end());
+    return route;
+}
+void dfs(AList& g, int a, vector<int>& route) {
+    while(!g[a].empty()) {
+        int b = g[a].back();
+        g[a].pop_back();
+        dfs(g, b, route);
+    }
+    route.push_back(a);
+}
+\end{code}
+

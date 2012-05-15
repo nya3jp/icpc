@@ -1,0 +1,224 @@
+\section{Tips}
+
+\subsection{STL}
+
+\subsubsection{string}
+
+\begin{code}
+// コンストラクタ/代入
+string();
+string(const basic_string& s, size_type pos = 0, size_type n = npos);
+string(const char*);
+string(const char* s, size_type n);
+string(size_type n, char c);
+string(InputIterator first, InIter last);
+
+// 挿入
+void insert(iterator pos, InIter f, InIter l);
+string& insert(size_type pos, const string& s);
+string& insert(size_type pos, const char* s);
+string& append(const string& s);
+string& append(size_type n, char c);
+string& append(InIter first, InIter last);
+void push_back(char c);
+
+// 削除
+iterator erase(iterator p);
+iterator erase(iterator first, iterator last);
+string& erase(size_type pos = 0, size_type n = npos);
+void clear();
+void resize(size_type n, char c = char());
+
+// 置換
+string& replace(size_type pos, size_type n, const string& s);
+string& replace(size_type pos, size_type n, size_type n1, char c);
+string& replace(iterator first, iterator last, const string& s);
+string& replace(iterator first, iterator last, size_type n, char c);
+string& replace(iterator first, iterator last, InIter f, InIter l);
+
+// 切り出し
+basic_string substr(size_type pos = 0, size_type n = npos);
+
+// 検索 find/rfind
+size_type find(const basic_string& s, size_type pos = 0);
+size_type find(const char* s, size_type pos, size_type n);
+size_type find(const char* s, size_type pos = 0);
+size_type find(char c, size_type pos = 0);
+
+// 検索 find_{first,last}_{of,not_of}
+size_type find_first_of(const basic_string& s, size_type pos = 0);
+size_type find_first_of(const char* s, size_type pos, size_type n);
+size_type find_first_of(const char* s, size_type pos = 0);
+size_type find_first_of(char c, size_type pos = 0);
+\end{code}
+
+
+\newpage
+
+\subsubsection{algorithm}
+
+\paragraph{検索}
+　%全角すぺーす
+\begin{code}
+// 線形探索
+InIter find(InIter first, InIter last, const EqualityComparable& value);
+ForIter1 find_end(ForIter1 first1, ForIter1 last1, ForIter2 first2, ForIter2 last2, BinPred comp);
+InIter find_first_of(InIter first1, InIter last1, ForIter first2, ForIter last2, BinPred comp);
+InIter find_if(InIter first, InIter last, Predicate pred);
+ForIter max_element(ForIter first, ForIter last, BinPred comp);
+ForIter min_element(ForIter first, ForIter last, BinPred comp);
+pair<InIter1, InIter2> mismatch(InIter1 first1, InIter1 last1, InIter2 first2, BinPred pred);
+ForIter adjacent_find(ForIter first, ForIter last, BinPred pred);
+
+// 二分探索
+bool binary_search(ForIter first, ForIter last, const T& value, Ordering comp);
+pair<ForIter, ForIter> equal_range(ForIter first, ForIter last, const T& value, Ordering comp);
+ForIter lower_bound(ForIter first, ForIter last, const T& value, Ordering comp);
+ForIter upper_bound(ForIter first, ForIter last, const T& value, Ordering comp);
+
+// 部分列検索
+ForIter1 search(ForIter1 first1, ForIter1 last1, ForIter2 first2, ForIter2 last2, BinPred pred);
+ForIter search_n(ForIter first, ForIter last, Integer count, const T& value, BinPred pred);
+
+// カウント
+difference_type count(InIter first, InIter last, const EqualityComparable& value);
+difference_type count_if(InIter first, InIter last, Predicate pred);
+\end{code}
+
+
+\paragraph{比較}
+　%全角すぺーす
+\begin{code}
+bool equal(InIter1 first1, InIter1 last1, InIter2 first2, BinPred pred);
+bool lexicographical_compare(InIter1 first1, InIter1 last1, InIter2 first2, InIter2 last2,
+                                 BinPred comp);
+\end{code}
+
+
+\paragraph{置換・削除}
+　%全角すぺーす
+\begin{code}
+// 置換
+void replace(ForIter first, ForIter last, const T& old_value, const T& new_value);
+OutIter replace_copy(InIter first, InIter last, OutIter result,
+                         const T& old_value, const T& new_value);
+OutIter replace_copy_if(InIter first, InIter last, OutIter result,
+                            Predicate pred, const T& new_value) ;
+void replace_if(ForIter first, ForIter last, Predicate pred, const T& new_value);
+
+// 削除
+ForIter remove(ForIter first, ForIter last, const T& value);
+OutIter remove_copy(InIter first, InIter last, OutIter result, const T& value);
+OutIter remove_copy_if(InIter first, InIter last, OutIter result, Predicate pred);
+ForIter remove_if(ForIter first, ForIter last, Predicate pred);
+\end{code}
+
+\paragraph{ソート}
+　%全角すぺーす
+\begin{code}
+void sort(RandIter first, RandIter last, Ordering comp);
+void stable_sort(RandIter first, RandIter last, Ordering comp);
+bool is_sorted(ForIter first, ForIter last, Ordering comp);
+void partial_sort(RandIter first, RandIter middle, RandIter last, Ordering comp);
+RandIter partial_sort_copy(InIter first, InIter last, RandIter result_first,
+                               RandIter result_last, Compare comp);
+void nth_element(RandIter first, RandIter nth, RandIter last, Ordering comp);
+\end{code}
+
+\paragraph{数列}
+　%全角すぺーす
+\begin{code}
+T accumulate(InIter first, InIter last, T init, BinFunc op);
+OutIter adjacent_difference(InIter first, InIter last, OutIter result, BinFunc op);
+T inner_product(InIter1 first1, InIter1 last1, InIter2 first2, T init,
+                    BinFunc1 op1, BinFunc2 op2);
+OutIter partial_sum(InIter first, InIter last, OutIter result, BinOper op);
+\end{code}
+
+\paragraph{イタレーション}
+　%全角すぺーす
+\begin{code}
+UnaFunc for_each(InIter first, InIter last, UnaFunc f);
+void generate(ForIter first, ForIter last, Generator gen);
+OutIter transform(InIter first, InIter last, OutIter result, UnaFunc op);
+OutIter transform(InIter1 first1, InIter1 last1, InIter2 first2, OutIter result, BinFunc op);
+\end{code}
+
+\paragraph{集合操作}
+　%全角すぺーす
+\begin{code}
+// set operation
+bool includes(InIter1 first1, InIter1 last1, InIter2 first2, InIter2 last2, Ordering comp);
+OutIter set_difference(InIter1 first1, InIter1 last1, InIter2 first2, InIter2 last2,
+                           OutIter result, Ordering comp);
+OutIter set_intersection(InIter1 first1, InIter1 last1, InIter2 first2, InIter2 last2,
+                             OutIter result, Ordering comp);
+OutIter set_symmetric_difference(InIter1 first1, InIter1 last1, InIter2 first2, InIter2 last2,
+                                     OutIter result, Ordering comp);
+OutIter set_union(InIter1 first1, InIter1 last1, InIter2 first2, InIter2 last2,
+                      OutIter result, Ordering comp);
+
+// merge
+void inplace_merge(BidirIter first, BidirIter middle, BidirIter last, Ordering comp);
+OutIter merge(InIter1 first1, InIter1 last1, InIter2 first2, InIter2 last2,
+                  OutIter result, Ordering comp);
+
+// unique
+ForIter unique(ForIter first, ForIter last, BinPred pred);
+OutIter unique_copy(InIter first, InIter last, OutIter result, BinPred pred);
+\end{code}
+
+\paragraph{ヒープ操作}
+　%全角すぺーす
+\begin{code}
+void make_heap(RandIter first, RandIter last, Ordering comp);
+void pop_heap(RandIter first, RandIter last, Ordering comp);
+void push_heap(RandIter first, RandIter last, Ordering comp);
+void sort_heap(RandIter first, RandIter last, Ordering comp);
+\end{code}
+
+\paragraph{その他}
+　%全角すぺーす
+\begin{code}
+// copy
+OutIter copy(InIter first, InIter last, OutIter result);
+BidirIter2 copy_backward(BidirIter1 first, BidirIter1 last, BidirIter2
+ result);
+
+// fill
+void fill(ForIter first, ForIter last, const T& value); 
+OutIter fill_n(OutIter first, Size n, const T& value);
+
+// partition
+ForIter partition(ForIter first, ForIter last, Predicate pred);
+ForIter stable_partition(ForIter first, ForIter last, Predicate pred);
+
+// min/max
+const T& max(const T& a, const T& b, BinPred comp);
+const T& min(const T& a, const T& b, BinPred comp);
+
+// permutation
+bool next_permutation(BidirIter first, BidirIter last, Ordering comp);
+bool prev_permutation(BidirIter first, BidirIter last, Ordering comp);
+
+// reverse
+void reverse(BidirIter first, BidirIter last);
+OutIter reverse_copy(BidirIter first, BidirIter last, OutIter result);
+
+// rotate
+ForIter rotate(ForIter first, ForIter middle, ForIter last);
+OutIter rotate_copy(ForIter first, ForIter middle, ForIter last, OutIter result);
+
+// swap
+void iter_swap(ForIter1 a, ForIter2 b);
+void swap(Assignable& a, Assignable& b);
+ForIter2 swap_ranges(ForIter1 first1, ForIter1 last1, ForIter2 first2);
+
+// uninitialized
+ForIter uninitialized_copy(InIter first, InIter last, ForIter result);
+void uninitialized_fill(ForIter first, ForIter last, const T& x);
+ForIter uninitialized_fill_n(ForIter first, Size n, const T& x);
+\end{code}
+
+
+

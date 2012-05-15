@@ -1,0 +1,366 @@
+\section{その他}
+
+\subsection{ビット演算}
+
+\begin{lstlisting}
+unsigned int __builtin_popcount(unsigned int);  // 1であるビットの数を数える。
+unsigned long long __builtin_popcountll(unsigned long long);
+unsigned int __builtin_ctz(unsigned int);    // 末尾の0であるビットの数を数える。
+unsigned long long __builtin_ctzll(unsigned long long);
+y = x&-x;   // 最右ビットを抜き出す。
+y = x&(x-1); // 最右ビットを落とす。
+#define FOR_SUBSET(b, a) for(int b = (a)&-(a); b != 0; b = (((b|~(a))+1)&(a)))
+#define FOR_SUBSET(b, a) for(int b = a; b != 0; b = (b-1)&a)
+int next_combination(int p) {
+  int lsb = p&-p;
+  int rem = p+lsb;
+  int rit = rem&~p;
+  return rem|(((rit/lsb)>>1)-1);
+}
+\end{lstlisting}
+
+
+\subsection{平衡木}
+
+Treap. \w{サブツリーに対する操作を行ってはいけない。}
+
+\begin{lstlisting}
+template<class Key, class Value, class Cache>
+struct Treap {
+  Key key;
+  Value value;
+  int prio;
+  Treap* ch[2];
+  bool cached;
+  Cache cache;
+  Treap(const Key& key, const Value& value) : key(key), value(value), prio(rand()), cached(false) {
+    ch[0] = ch[1] = 0; // is this necessary?
+  }
+  Treap* insert(const Key& newkey, const Value& newvalue) {
+    if (!this)
+      return new Treap(newkey, newvalue);
+    if (newkey == key)
+      return this;
+    int side = (newkey < key ? 0 : 1);
+    ch[side] = ch[side]->insert(newkey, newvalue);
+    cached = false;
+    return rotate(side);
+  }
+  Treap* rotate(int side) {
+    if (ch[side] && ch[side]->prio > prio) {
+      Treap* rot = ch[side];
+      this->ch[side] = rot->ch[side^1];
+      rot->ch[side^1] = this;
+      this->cached = rot->cached = false;
+      return rot;
+    }
+    return this;
+  }
+  void clear() {
+    if (this) {
+      ch[0]->clear();
+      ch[1]->clear();
+      delete this;
+    }
+  }
+  Treap* remove(const Key& oldkey) {
+    if (!this)
+      return this;
+    if (key == oldkey) {
+      if (!ch[1]) {
+        Treap* res = ch[0];
+        delete this;
+        return res;
+      }
+      pair<Treap*, Treap*> res = ch[1]->delete_min();
+      res.first->ch[0] = this->ch[0];
+      res.first->ch[1] = res.second;
+      res.first->cached = false;
+      delete this;
+      return res.first->balance();
+    }
+    int side = (oldkey < key ? 0 : 1);
+    ch[side] = ch[side]->remove(oldkey);
+    cached = false;
+    return this;
+  }
+  pair<Treap*, Treap*> delete_min() {
+    cached = false;
+    if (!ch[0])
+      return make_pair(this, ch[1]);
+    pair<Treap*, Treap*> res = ch[0]->delete_min();
+    ch[0] = res.second;
+    return make_pair(res.first, this);
+  }
+  inline int priority() {
+    return (this ? prio : -1);
+  }
+  Treap* balance() {
+    int side = (ch[0]->priority() > ch[1]->priority() ? 0 : 1);
+    Treap* rot = rotate(side);
+    if (rot == this)
+      return this;
+    return rot->balance();
+  }
+  Cache eval() {
+    if (!this)
+      return Cache();
+    if (!cached)
+      cache = Cache(key, value, ch[0]->eval(), ch[1]->eval());
+    cached = true;
+    return cache;
+  }
+};
+
+// 小さいほうからn番目の要素をクエリできるようにする場合の例
+struct SizeCache {
+  int size;
+  SizeCache() : size(0) {}
+  template<class Key, class Value>
+  SizeCache(const Key& key, const Value& value, const SizeCache& left, const SizeCache& right)
+   : size(left.size+right.size+1) {}
+};
+template<class Key, class Value>
+pair<Key, Value> nth(Treap<Key, Value, SizeCache>* root, int k) {
+  int l = root->ch[0]->eval().size;
+  if (k < l)
+    return nth<Key, Value>(root->ch[0], k);
+  if (k == l)
+    return make_pair(root->key, root->value);
+  return nth<Key, Value>(root->ch[1], k-(l+1));
+}
+\end{lstlisting}
+
+
+\subsection{Fenwick Tree}
+
+配列のpartial sumの取得と要素の書き換えをそれぞれ対数時間で行うデータ構造。別名Binary Indexed Tree。
+n次元にも容易に拡張できる。
+和の取得・要素の更新ともに$\mathrm{O}(\log n)$.
+
+\begin{lstlisting}
+T bitquery(const vector<T>& bit, int from, int to) { // [from, to)
+  if (from > 0)
+    return bitquery(bit, 0, to) - bitquery(bit, 0, from);
+  T res = T();
+  for(int k = to-1; k >= 0; k = (k & (k+1)) - 1)
+    res += bit[k];
+  return res;
+}
+
+void bitupdate(vector<T>& bit, int pos, const T& delta) {
+  for(const int n = bit.size(); pos < n; pos |= pos+1)
+    bit[pos] += delta;
+}
+\end{lstlisting}
+
+\subsection{Range Minimum Query}
+
+列のある区間の最小値を対数時間で求めるデータ構造。
+\w{配列サイズは２のべき乗であること。}
+初期化に$\mathrm{O}(n)$. 更新・クエリに$\mathrm{O}(\log n)$.
+
+\begin{lstlisting}
+// 配列を拡張してRMQに対応させる
+void rmq_ext(vector<T>& v) {
+  int n = v.size();
+  assert(__builtin_popcount(n) == 1); // 長さは2のべき乗でなければならない
+  v.resize(n*2);
+  for(int i = n; i < 2*n; i++)
+    v[i] = min(v[(i-n)*2+0], v[(i-n)*2+1]);
+}
+// 列の要素を書き換える
+void rmq_update(vector<T>& rmq, int pos, const T& value) {
+  int n = rmq.size() / 2;
+  rmq[pos] = value;
+  while(pos < 2*n-1) {
+    rmq[pos/2+n] = min(rmq[pos], rmq[pos^1]);
+    pos = pos/2+n;
+  }
+}
+// [from, to)の最小値を取り出す
+T rmq_query(const vector<T>& rmq, int from, int to) {
+  int n = rmq.size() / 2;
+  int p = min((from == 0 ? 32 : __builtin_ctz(from)), 31-__builtin_clz(to-from));
+  T x = rmq[(from>>p)|((n*2*((1<<p)-1))>>p)];
+  from += 1<<p;
+  if (from < to)
+    x = min(x, rmq_query(rmq, from, to));
+  return x;
+}
+\end{lstlisting}
+
+
+\subsection{Range Tree}
+
+区間に対する加算、区間中の最小値のクエリ、各要素の値のクエリを対数程度の時間で行う木。
+\verb|range_add| に $O((\log n)^2)$.\verb|range_min| に $O(\log n)$.
+\verb|query| に $O(\log n)$.
+
+\begin{lstlisting}
+struct range_tree {
+  int m;
+  vector< pair<int, int> > tree;
+
+  range_tree(int n) {
+    m = n;
+    while(m&(m-1))
+      m += m&-m;
+    tree.assign(2*m, make_pair(0, 0));
+    for(int k = n; k < m; k++)
+      tree[k] = make_pair(INF, INF);
+    for(int k = m; k < 2*m-1; k++)
+      tree[k] = make_pair(0,
+                min(tree[((k&~m)<<1)^0].second,
+                  tree[((k&~m)<<1)^1].second));
+  }
+  void range_add(int a, int b, int d) {
+    while(a < b) {
+      int r = 1, k = a;
+      while((a & r) == 0 && a + (r<<1) <= b) {
+        r <<= 1;
+        k = (k >> 1) | m;
+      }
+      tree[k].first += d;
+      do {
+        tree[k].second = tree[k].first +
+          (k < m ? zero :
+           min(tree[((k&~m)<<1)^0].second,
+             tree[((k&~m)<<1)^1].second));
+        k = (k >> 1) | m;
+      } while(k < 2*m-1);
+      a += r;
+    }
+  }
+  int range_min(int a, int b) {
+    int res = INF;
+    while(a < b) {
+      int r = 1, k = a;
+      while((a & r) == 0 && a + (r<<1) <= b) {
+        r <<= 1;
+        k = (k >> 1) | m;
+      }
+      res = min(res, tree[k].second);
+      a += r;
+    }
+    return res;
+  }
+  int query(int k) {
+    int res = 0;
+    while(k < 2*m-1) {
+      res += tree[k].first;
+      k = (k >> 1) | m;
+    }
+    return res;
+  }
+};
+\end{lstlisting}
+
+
+
+\subsection{α-β枝狩り}
+
+なんだかんだで毎回書くのに苦労するあれ。
+
+\begin{lstlisting}
+// [alpha..beta]の値以外を返しても意味を持たない、という意味
+int search(int alpha = -INF, int beta = INF) {
+  if (finished())
+    return 0;
+  if (enemy_turn())
+    return -search(-beta, -alpha);
+  for(move a : possible moves) {
+    int p = gain(a);
+    alpha >?= p + search(alpha-p, beta-p);
+    if (alpha >= beta)
+      break;
+  }
+  return alpha;
+}
+\end{lstlisting}
+
+
+
+\subsection{マトロイド交差}
+
+マトロイド交差の最大独立集合を求める。
+\w{M1, M2について独立性判定ができること(M::appendable)。
+M2について、独立な集合に要素を加えて非独立になったとき、存在する一意の回路を計算できること(M2::circuit)。}
+
+\begin{lstlisting}
+template<class E, class M1, class M2>
+set<E> augment(M1 m1, M2 m2, set<E> g, set<E> s) {
+  map<E, E> trace;
+
+  vector<E> rights;
+  FOR(i, g) {
+    if (m1.appendable(s, *i)) {
+      rights.push_back(*i);
+      trace[*i] = *i;
+    }
+  }
+  while(!rights.empty()) {
+    vector<E> lefts;
+    REP(i, rights.size()) {
+      E e = rights[i];
+      if (m2.appendable(s, e)) {
+        while(trace[e] != e) {
+          s.insert(e); e = trace[e];
+          s.erase(e); e = trace[e];
+        }
+        s.insert(e);
+        return s;
+      }
+      vector<E> c = m2.circuit(s, e);
+      REP(j, c.size()) {
+        E f = c[j];
+        if (trace.count(f) == 0) {
+          trace[f] = e;
+          lefts.push_back(f);
+        }
+      }
+    }
+    rights.clear();
+    REP(i, lefts.size()) {
+      E f = lefts[i];
+      s.erase(f);
+      FOR(i, g) {
+        E e = *i;
+        if (m1.appendable(s, e) && trace.count(e) == 0) {
+          trace[e] = f;
+          rights.push_back(e);
+        }
+      }
+      s.insert(f);
+    }
+  }
+  return s;
+}
+\end{lstlisting}
+
+
+
+\subsection{Zellerの公式}
+
+\begin{lstlisting}
+int zeller(int y, int m, int d) {
+  if (m <= 2) {
+    y--;
+    m += 12;
+  }
+  return (y + y/4 - y/100 + y/400 + (13 * m + 8) / 5 + d) % 7;
+}
+\end{lstlisting}
+
+
+\subsection{Grundy数}
+
+moveできなくなった時に負けるゲームについて、
+勝てるかどうかの判定と必勝法の計算を行う道具。
+盤面ひとつひとつに数字を割り当てる。後手必勝が0、先手必勝が1以上。
+選択はmex。平行していくつかのゲームを進める場合はxor。
+
+
+\newpage
+
+

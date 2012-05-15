@@ -1,0 +1,433 @@
+\section{幾何}
+
+\subsection{基礎}
+
+\begin{lstlisting}
+typedef complex<double> P;
+struct L { P pos, dir; };
+typedef vector<P> G;
+struct C { P p; double r; };
+
+inline double inp(const P& a, const P& b) {
+  return (conj(a)*b).real();
+}
+inline double outp(const P& a, const P& b) {
+  return (conj(a)*b).imag();
+}
+
+inline int ccw(const P& p, const P& r, const P& s) {
+  P a(r-p), b(s-p);
+  int sgn = signum(outp(a, b));
+  if (sgn != 0)
+    return sgn;
+  if (a.real()*b.real() < -EPS || a.imag()*b.imag() < -EPS)
+    return -1;
+  if (norm(a) < norm(b) - EPS)
+    return 1;
+  return 0;
+}
+
+// ベクトルpをベクトルbに射影したベクトルを計算する
+inline P proj(const P& p, const P& b) {
+  return b*inp(p,b)/norm(b);
+}
+// 点pから直線lに引いた垂線の足となる点を計算する
+inline P perf(const L& l, const P& p) {
+  L m = {l.pos - p, l.dir};
+  return (p + (m.pos - proj(m.pos, m.dir)));
+}
+// 線分sを直線bに射影した線分を計算する
+inline L proj(const L& s, const L& b) {
+   return (L){perf(b, s.pos), proj(s.dir, b.dir)};
+}
+\end{lstlisting}
+
+
+\subsection{面積・体積}
+
+\subsubsection{多角形の面積}
+
+\begin{lstlisting}
+double area(G& g) {
+  int n = g.size();
+  double s = 0.0;
+  for(int i = 0; i < n; i++) {
+    int j = (i+1)%n;
+    s += outp(g[i], g[j])/2;
+  }
+  return abs(s);
+}
+\end{lstlisting}
+
+
+\subsubsection{円と円の交差面積}
+
+\begin{lstlisting}
+double cc_area(const C& c1, const C& c2) {
+  double d = abs(c1.p - c2.p);
+  if (c1.r + c2.r <= d + EPS) {
+    return 0.0;
+  } else if (d <= abs(c1.r - c2.r) + EPS) {
+    double r = c1.r <? c2.r;
+    return r * r * PI;
+  } else {
+    double rc = (d*d + c1.r*c1.r - c2.r*c2.r) / (2*d);
+    double theta = acos(rc / c1.r);
+    double phi = acos((d - rc) / c2.r);
+    return c1.r*c1.r*theta + c2.r*c2.r*phi - d*c1.r*sin(theta);
+  }
+}
+\end{lstlisting}
+
+
+
+\subsection{交差}
+
+
+\subsubsection{各種交差判定}
+
+\begin{lstlisting}
+bool ls_intersects(const L& l, const L& s) {
+  return (signum(outp(l.dir, s.pos-l.pos)) *
+      signum(outp(l.dir, s.pos+s.dir-l.pos)) <= 0);
+}
+bool sp_intersects(const L& s, const P& p) {
+  return ( abs(s.pos - p) + abs(s.pos + s.dir - p) - abs(s.dir) < EPS );
+}
+bool ss_intersects(const L& s, const L& t) {
+  return (ccw(s.pos, s.pos+s.dir, t.pos) *
+      ccw(s.pos, s.pos+s.dir, t.pos+t.dir) <= 0 &&
+      ccw(t.pos, t.pos+t.dir, s.pos) *
+      ccw(t.pos, t.pos+t.dir, s.pos+s.dir) <= 0);
+}
+\end{lstlisting}
+
+
+\subsubsection{多角形と点の包含判定}
+
+辺と点が重なれば包含。そうでなければ、
+$\mathrm{abs}(\sum_i \arg((g_{i+1}-p)/(g_i-p))) > 1$ なら包含。
+
+
+\subsubsection{円と円の交点}
+
+\w{交点が0個または無限個だとうまく動かない。}
+
+\begin{lstlisting}
+pair<P, P> cc_cross(const C& c1, const C& c2) {
+  double d = abs(c1.p - c2.p);
+  double rc = (d*d + c1.r*c1.r - c2.r*c2.r) / (2*d);
+  double rs = sqrt(c1.r*c1.r - rc*rc);
+  P diff = (c2.p - c1.p) / d;
+  return make_pair(c1.p + diff * P(rc, rs), c1.p + diff * P(rc, -rs));
+}
+\end{lstlisting}
+
+
+
+\subsubsection{円と直線の交点}
+
+\begin{lstlisting}
+vector<P> cl_cross(const C& c, const L& l) {
+  P h = perf(l, c.p);
+  double d = abs(h - c.p);
+  vector<P> res;
+  if(d < c.r - EPS){
+  P x = l.dir / abs(l.dir) * sqrt(c.r*c.r - d*d);
+  res.push_back(h + x);
+  res.push_back(h - x);
+  }else if(d < c.r + EPS){
+  res.push_back(h);
+  }
+  return res;
+}
+\end{lstlisting}
+
+
+\subsubsection{凸多角形と線分の包含判定}
+
+線分と凸多角形が内部で交差しているか判定する。接しているだけの場合には交
+差しているとみなさない。
+
+\w{多角形は凸でなければいけない。}
+\w{多角形は反時計回りに与えられなければならない。}
+
+\begin{lstlisting}
+bool cgs_contains_exclusive(G& r, P from, P to) {
+  int m = r.size();
+
+  P dir0 = to - from;
+
+  double lower = 0.0, upper = 1.0;
+  REP(i, m) {
+    int j = (i+1)%m;
+    P a = r[i], b = r[j];
+    P ofs = a - from;
+    P dir1 = b - a;
+    double num = (conj(ofs)*dir1).imag();
+    double denom = (conj(dir0)*dir1).imag();
+    if (abs(denom) < EPS) {
+      if (num < EPS)
+        lower = upper = 0.0;
+    }
+    else {
+      double t = num / denom;
+      if (denom > 0)
+        upper <?= t;
+      else
+        lower >?= t;
+    }
+  }
+
+  return (upper-lower > EPS);
+}
+\end{lstlisting}
+
+
+\subsubsection{直線と直線の交点}
+
+\w{直線が並行となるときに注意すること。}
+\verb|denom| = 0 となるケース、すなわち\w{直線が平行となるとき}に注意すること。
+\w{片方または両方が線分のとき}に使用する場合は、\verb|{ls,ss}_intersects()|等と併用して、交点がvalidなものか確認すること。
+
+\begin{lstlisting}
+P line_cross(const L& l, const L& m) {
+  double num = outp(m.dir, m.pos-l.pos);
+  double denom = outp(m.dir, l.dir);
+  return P(l.pos + l.dir*num/denom);
+}
+\end{lstlisting}
+
+
+\subsection{距離}
+
+
+\subsubsection{各種距離}
+
+\begin{lstlisting}
+double lp_distance(const L& l, const P& p) {
+  return abs(outp(l.dir, p-l.pos) / abs(l.dir));
+}
+double ll_distance(const L& l, const L& m) {
+  return (ll_intersects(l, m) ? 0 : lp_distance(l, m.pos));
+}
+double ls_distance(const L& l, const L& s) {
+  if (ls_intersects(l, s))
+    return 0;
+  return min(lp_distance(l, s.pos), lp_distance(l, s.pos+s.dir));
+}
+double sp_distance(const L& s, const P& p) {
+  const P r = perf(s, p);
+  const double pos = ((r-s.pos)/s.dir).real();
+  if (-EPS <= pos && pos <= 1 + EPS)
+    return abs(r - p);
+  return min(abs(s.pos - p),
+         abs(s.pos+s.dir - p));
+}
+double ss_distance(const L& s, const L& t) {
+  if (ss_intersects(s, t))
+    return 0;
+  return (sp_distance(s, t.pos) <?
+      sp_distance(s, t.pos+t.dir) <?
+      sp_distance(t, s.pos) <?
+      sp_distance(t, s.pos+s.dir));
+}
+\end{lstlisting}
+
+
+\subsection{最遠点対}
+
+\w{点集合は凸包であり、反時計回りに与えられること。}
+
+\accepted{PKU2187 Beauty Contest}
+
+\begin{lstlisting}
+double farthest(const vector<P>& v) {
+  int n = v.size();
+
+  int si = 0, sj = 0;
+  REP(t, n) {
+    if (v[t].imag() < v[si].imag())
+      si = t;
+    if (v[t].imag() > v[sj].imag())
+      sj = t;
+  }
+
+  double res = 0;
+  int i = si, j = sj;
+  do {
+    res >?= abs(v[i]-v[j]);
+    P di = v[(i+1)%n] - v[i];
+    P dj = v[(j+1)%n] - v[j];
+    if (outp(di, dj) >= 0)
+      j = (j+1)%n;
+    else
+      i = (i+1)%n;
+  } while(!(i == si && j == sj));
+
+  return res;
+}
+\end{lstlisting}
+
+
+
+\subsection{凸包}
+
+コードは最小の点数からなる凸包を求める場合。凸包の辺上にある点を
+全て取りたい場合は\verb|ccw|の比較を\verb|-EPS|に変更する。
+\w{最大点数を取るように変更した場合、一直線に並んだ点群を処理すると
+凸包が元の点数より大きくなることに注意。}
+\w{点がひとつのときに注意。}
+
+\begin{lstlisting}
+bool xy_less(const P& a, const P& b) {
+  if (abs(a.imag()-b.imag()) < EPS) return (a.real() < b.real());
+  return (a.imag() < b.imag());
+}
+double ccw(P a, P b, P c) {
+  return (conj(b-a)*(c-a)).imag();
+}
+template<class IN>
+void walk_rightside(IN begin, IN end, vector<P>& v) {
+  IN cur = begin;
+  v.push_back(*cur++);
+  vector<P>::size_type s = v.size();
+  v.push_back(*cur++);
+  while(cur != end) {
+    if (v.size() == s || ccw(v[v.size()-2], v.back(), *cur) > EPS)
+      v.push_back(*cur++);
+    else
+      v.pop_back();
+  }
+  v.pop_back();
+}
+vector<P> convex_hull(vector<P> v) {
+  if (v.size() <= 1)
+    return v; // EXCEPTIONAL
+  sort(ALLOF(v), xy_less);
+  vector<P> cv;
+  walk_rightside(v.begin(), v.end(), cv);
+  walk_rightside(v.rbegin(), v.rend(), cv);
+  return cv;
+}
+\end{lstlisting}
+
+
+\subsection{凸多角形のクリッピング}
+
+直線の右側が切り取られ、左側が残される。
+\w{多角形はcounterclockwiseに与えられていること。}
+
+\begin{lstlisting}
+G cut_polygon(const G& g, L cut) {
+  int n = g.size();
+  G res;
+
+  REP(i, n) {
+    P from(g[i]), to(g[(i+1)%n]);
+    double p1 = (conj(cut.dir)*(from-cut.pos)).imag();
+    double p2 = (conj(cut.dir)*(to-cut.pos)).imag();
+    if (p1 > -EPS) {
+      res.push_back(from);
+      if (p2 < -EPS && p1 > EPS)
+        res.push_back(from - (to-from)*p1/(conj(cut.dir)*(to-from)).imag());
+    }
+    else if (p2 > EPS) {
+      res.push_back(from - (to-from)*p1/(conj(cut.dir)*(to-from)).imag());
+    }
+  }
+
+  return res;
+}
+\end{lstlisting}
+
+
+\subsection{アレンジメント}
+
+与えられた直線の集合に対し、直線同士の交点からなるグラフを作成する。
+線分から作成したいときはlp\_intersectsをsp\_intersectsに
+置き換える。ただし、端点もノードにしたい場合は適宜追加すること。
+\w{重なる直線が存在してはいけない。}
+\w{lp\_intersectsはNaNである点に対しても正しく動くこと。}
+
+\begin{lstlisting}
+typedef map<P, vector<P> > PGraph;
+PGraph arrange(const vector<L>& lines) {
+  int m = lines.size();
+ 
+  set<P> points;
+  REP(j, m) REP(i, j) {
+    L a = lines[i], b = lines[j];
+    double r = outp(b.dir, b.pos-a.pos) / outp(b.dir, a.dir);
+    P p = a.pos + a.dir * r;
+    if (lp_intersects(a, p) && lp_intersects(b, p))
+      points.insert(p);
+  }
+ 
+  PGraph g;
+  REP(k, m) {
+    vector< pair<double, P> > onlines;
+    FOR(it, points) if (lp_intersects(lines[k], *it))
+      onlines.push_back(make_pair(inp(*it-lines[k].pos, lines[k].dir), *it));
+    sort(ALLOF(onlines));
+    REP(i, (int)onlines.size()-1) {
+      g[onlines[i+0].second].push_back(onlines[i+1].second);
+      g[onlines[i+1].second].push_back(onlines[i+0].second);
+    }
+  }
+ 
+  return g;
+}
+\end{lstlisting}
+
+
+\subsection{ダイス}
+
+\begin{lstlisting}
+struct die_t {
+  int top, front, right, left, back, bottom;
+};
+
+#define rotate_swap(x,a,b,c,d) swap(x.a, x.b); swap(x.b, x.c); swap(x.c, x.d);
+void rotate_right(die_t& x) { rotate_swap(x,top,left,bottom,right); }
+void rotate_left(die_t& x) { rotate_swap(x,top,right,bottom,left); }
+void rotate_front(die_t& x) { rotate_swap(x,top,back,bottom,front); }
+void rotate_back(die_t& x) { rotate_swap(x,top,front,bottom,back); }
+void rotate_cw(die_t& x) { rotate_swap(x,back,left,front,right); }
+void rotate_ccw(die_t& x) { rotate_swap(x,back,right,front,left); }
+
+void generate_all() {
+  REP(i, 6) {
+    REP(j, 4) {
+      emit();
+      rotate_cw(x);
+    }
+    (i%2 == 0 ? rotate_right : rotate_front)(x);
+  }
+}
+\end{lstlisting}
+
+\subsection{三次元幾何}
+
+\subsubsection{直線と直線の距離}
+
+\begin{lstlisting}
+double ll_distance(L& a, L& b) {
+  P pa = a.from;
+  P pb = b.from;
+  P da = a.to - a.from;
+  P db = b.to - b.from;
+  double num = inp( (db * inp(da, db) - da * inp(db, db)) , pb - pa );
+  double denom = inp(da, db) * inp(da, db) - inp(da, da) * inp(db, db);
+  double ta;
+  if (abs(denom) < EPS)
+    ta = 0;
+  else
+    ta = num / denom;
+  P p = pa + da * ta;
+  return lp_distance(b, p);
+}
+\end{lstlisting}
+
+\newpage
+

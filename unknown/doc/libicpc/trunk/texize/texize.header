@@ -1,0 +1,41 @@
+%
+% Library Document for ACM/ICPC
+% LaTeX based on library by kaicho-@IHI (U-Tokyo)
+%
+
+\documentclass{jsarticle}
+\usepackage{amsmath}
+\usepackage{eclbkbox}
+\usepackage{fancybox}
+\usepackage{pifont}
+\usepackage{txfonts}
+\usepackage{picins}
+\usepackage{ascmac}
+\usepackage{graphicx}
+\everymath{\displaystyle}
+\newenvironment{code}%
+ {\VerbatimEnvironment\begin{breakbox}\vspace{-1em}\footnotesize\begin{Verbatim}}%
+ {\end{Verbatim}\vspace{-.8em}\end{breakbox}}
+\addtolength{\oddsidemargin}{-.5cm}
+\addtolength{\voffset}{-1.2cm}
+\addtolength{\textwidth}{1cm}
+\addtolength{\textheight}{2cm}
+\setlength{\fboxsep}{.7em}
+\renewcommand{\breakboxskip}{.7em}
+\renewcommand{\ttdefault}{pcr}
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+\newcommand{\accepted}[1]{\ding{52} Accepted (#1)}
+\newcommand{\nottested}[0]{\ding{56} NOT TESTED!}
+\newcommand{\derived}[1]{\ding{224} Derived from #1}
+\newcommand{\todo}[1]{\textbf{TODO: #1}}
+\newcommand{\mymaketitle}[3]%
+ {\begin{center}\begin{tabular}{lr}\textsf{\huge #1}\hspace{3.5cm}\mbox{}&#3\\\hline&#2\end{tabular}\end{center}}
+\DeclareMathOperator{\vers}{vers}
+\setcounter{tocdepth}{3}
+\begin{document}
+
+\mymaketitle{ACM/ICPC Library}{by libicpc committers}{Last Update: $UpdateDate$}
+\tableofcontents
+\newpage
+
+

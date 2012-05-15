@@ -1,0 +1,833 @@
+\section{グラフ}
+
+
+\subsection{最短路}
+
+\subsubsection{Dijkstra}
+
+一対全最短路問題。非負の重みのみであるときに使用する。
+
+\begin{lstlisting}
+Graph g;
+vector<int> trace;
+ 
+Weight shortest(int start, int goal) {
+  int n = g.size();
+  trace.assign(n, -2); // UNREACHABLE
+ 
+  priority_queue<Edge, vector<Edge>, greater<Edge> > q;
+  q.push((Edge){-1, start, 0}); // TERMINAL
+ 
+  while(!q.empty()) {
+    Edge e = q.top();
+    q.pop();
+    if (trace[e.dest] >= 0)
+      continue;
+    trace[e.dest] = e.src;
+    if (e.dest == goal)
+      return e.weight;
+    FOR(it, g[e.dest])
+      if (trace[it->dest] == -2)
+        q.push((Edge){it->src, it->dest, e.weight + it->weight});
+  }
+  return -1;
+}
+ 
+vector<int> buildRoute(int goal) {
+  if (trace[goal] == -2)
+    return vector<int>(); // UNREACHABLE
+  vector<int> route;
+  for(int i = goal; i >= 0; i = trace[i])
+    route.push_back(i);
+  reverse(route.begin(), route.end());
+  return route;
+}
+\end{lstlisting}
+
+\subsubsection{Bellman-Ford}
+
+一対全最短路問題。負の重みがあるときに使用する。$n$回やっても緩和が
+起こるようならnegative cycleが存在する。
+
+枝の重みが非負であるグラフにおいて、一対全最短経路を求めるアルゴリズム。
+負の重みを持つ枝が存在するならBellman-Ford法などのアルゴリズムを用いる。
+\w{パスは非負の重みであること。}
+
+\begin{lstlisting}
+Graph g;
+ 
+bool shortest(int start) {
+  int n = g.size();
+  vector<Weight> costs(n, WEIGHT_INFTY);
+  vector<int> trace(n, -2);
+  costs[start] = 0;
+  trace[start] = -1;    // TERMINAL
+ 
+  REP(k, n) REP(a, n) if (costs[a] != WEIGHT_INFTY) FOR(it, g[a]) {
+    int b = it->dest;
+    Weight w = costs[a] + it->weight;
+    if (w < costs[b]) {
+      costs[b] = w;
+      trace[b] = a;
+    }
+  }
+  REP(a, n) FOR(it, g[a]) // negative cycleのチェック
+    if (costs[a] + it->weight < costs[it->dest])
+      return false;
+  return true;
+}
+\end{lstlisting}
+
+\subsubsection{Warshall-Floyd}
+
+全対全最短路問題。
+\w{自身への距離を0とするかどうかに応じて隣接行列の対角成分を
+初期化すること。}
+道順がいるときは再帰的に。
+
+\begin{lstlisting}
+Weight g[N][N];
+int trace[N][N];
+ 
+void shortest() {
+  REP(i, n) REP(j, n)
+    trace[i][j] = -1;
+  REP(j, n) REP(i, n) REP(k, n) {
+    if (g[i][k] > g[i][j] + g[j][k]) {
+      g[i][k] = g[i][j] + g[j][k];
+      trace[i][k] = j;
+    }
+  }
+}
+void buildRoute(vector<int>& route, int src, int dest, bool rec = false) {
+  if (!rec)
+    route.clear();
+  int inter = trace[src][dest];
+  if (inter < 0) {
+    route.push_back(src);
+  }
+  else {
+    buildRoute(route, src, inter, true);
+    buildRoute(route, inter, dest, true);
+  }
+  if (!rec)
+    route.push_back(dest);
+}
+\end{lstlisting}
+
+
+\subsection{最小広域木}
+
+任意の頂点集合分割について、それらの間にある枝のうち最小の重みを
+持つ枝を含む最小広域木が存在する。
+
+枝を重みの順でソートしてUnion-FindするのがKruskal。
+任意の点から始めて、最小コストで取り込める点を取っていくのがPrim。
+Primは隣接行列表現を用いれば$\mathrm{O}(V^3)$で走る。
+
+
+\begin{lstlisting}
+pair<Weight, Edges> prim(Graph& g) {
+  int n = g.size();
+  priority_queue<Edge, vector<Edge>, greater<Edge> > q;
+  vector<bool> visited(n, false);
+  Edges tree;
+  Weight weight = 0;
+ 
+  q.push((Edge){-1, 0, 0});
+  while(!q.empty()) {
+    Edge e = q.top();
+    q.pop();
+    if (visited[e.dest])
+      continue;
+    visited[e.dest] = true;
+    if (e.src >= 0) {
+      tree.push_back(e);
+      weight += e.weight;
+    }
+    FOR(it, g[e.dest])
+      if (!visited[it->dest])
+        q.push(*it);
+  }
+  return make_pair(weight, tree);
+}
+\end{lstlisting}
+
+\begin{lstlisting}
+pair<Weight, Edges> kruskal(Graph& g) {
+  int n = g.size();
+  vector<Edge> edges;
+  REP(a, n) FOR(it, g[a])
+    if (a < it->dest)
+      edges.push_back(*it);
+  sort(ALLOF(edges));
+  UnionFind uf(n);
+  Edges tree;
+  Weight weight = 0;
+  REP(i, edges.size()) {
+    if ((int)tree.size() >= n-1)
+      break;
+    Edge& e = edges[i];
+    if (uf.link(e.src, e.dest)) {
+      tree.push_back(e);
+      weight += e.weight;
+    }
+  }
+  return make_pair(weight, tree);
+}
+\end{lstlisting}
+
+
+
+\subsection{無向オイラー路}
+
+グラフの一筆書き(オイラー路)を求めるアルゴリズム。
+無向グラフが辺連結なとき、奇点が存在しない場合無向オイラー閉路が
+存在し、奇点が2個だけ存在する場合無向オイラー路が存在する。
+\w{グラフgは隣接行列で与えられること。多重辺・セルフループを許す。}
+
+
+\begin{lstlisting}
+int g[N][N];
+int adj[N][N];
+ 
+void dfs(int a, vector<int>& route) {
+  REP(b, N){
+    if(adj[a][b]){
+      adj[a][b]--;
+      adj[b][a]--;
+      dfs(b, route);
+    }
+  }
+  route.push_back(a);
+}
+ 
+vector<int> euler(int start) {
+  int odd = 0;
+  int nEdges = 0;
+  REP(i, N){
+    int deg = accumulate(g[i], g[i] + N, 0);
+    if(deg % 2 == 1)
+      odd++;
+    nEdges += deg;
+  }
+  nEdges /= 2;
+ 
+  vector<int> route;
+  int startdeg = accumulate(g[start], g[start] + N, 0);
+  if(odd == 0 || (odd == 2 && startdeg % 2 == 1)){
+    memcpy(adj, g, sizeof(g));
+    dfs(start, route);
+  }
+  
+  if((int)route.size() != nEdges + 1) // 非連結だった場合
+    route.clear();
+  reverse(route.begin(), route.end());
+  return route;
+}
+\end{lstlisting}
+
+
+
+\subsection{有向オイラー路}
+
+グラフの一筆書き(オイラー路)を求めるアルゴリズム。
+有向グラフが辺連結なとき、全ての点において出次数と入次数が等しい場合有向
+オイラー閉路が存在し、出次数1の点と入次数1の点が各1個でそれ以外の全ての
+点で出次数と入次数が等しい場合オイラー路が存在する。
+\w{グラフは隣接リストで与えられること。多重辺・セルフループを許す。}
+
+\begin{lstlisting}
+void dfs(Graph& g, int a, vector<int>& route) {
+  while(!g[a].empty()){
+    int b = g[a].back();
+    g[a].pop_back();
+    dfs(g, b, route);
+  }
+  route.push_back(a);
+}
+ 
+vector<int> euler(Graph& g, int start) {
+  int nNodes = g.size();
+  int nEdges = 0;
+  vector<int> deg(nNodes, 0);
+  REP(i, nNodes){
+    nEdges += g[i].size();
+    REP(j, g[i].size())
+      deg[g[i][j]]--; // 入次数
+    deg[i] += g[i].size(); // 出次数
+  }
+  
+  vector<int> route;
+  int nonzero = nNodes - count(deg.begin(), deg.end(), 0);
+  if(nonzero == 0 || (nonzero == 2 && deg[start] == 1)) {
+    Graph g_(g);
+    dfs(g_, start, route);
+  }
+    
+  if((int)route.size() != nEdges + 1) // 非連結だった場合
+    route.clear();
+  reverse(route.begin(), route.end());
+  return route;
+}
+\end{lstlisting}
+
+\subsection{強連結成分分解}
+
+出力される強連結成分はDAGに縮約したときのトポロジカル順序に従っている。
+
+\begin{lstlisting}
+Graph g;
+vector<bool> visited;
+ 
+vector< vector<int> > scc() {
+  int n = g.size();
+  Graph r(n);    // make reversed graph
+  REP(a, n) FOR(it, g[a])
+    r[it->dest].push_back((Edge){it->dest, it->src});
+  vector<int> order;
+  visited.assign(n, false);
+  REP(i, n) dfs(i, order);
+  reverse(order.begin(), order.end());
+  g.swap(r);
+  vector< vector<int> > components;
+  visited.assign(n, false);
+  REP(i, n)
+    if (!visited[order[i]])
+      components.push_back(vector<int>()) ,
+        dfs(order[i], components.back());
+  g.swap(r);
+  return components;
+}
+void dfs(int a, vector<int>& order) {
+  if (visited[a])
+    return;
+  visited[a] = true;
+  FOR(it, g[a]) dfs(it->dest, order);
+  order.push_back(a);
+}
+\end{lstlisting}
+
+
+
+\subsection{二重頂点連結成分}
+
+点$a$を除去したときに$m$個の連結成分に分割される時、artsに$m-1$個の数$a$が代入される。
+bccsには、二重頂点連結成分を誘導する頂点集合の集合が代入される。
+\w{arts, bccsは空にして渡すこと。}
+
+\begin{lstlisting}
+int n;
+bool g[N][N];
+
+int bcc_decompose(int a, int depth, vector<int>& labels, vector<int>& comp,
+                  vector<int>& arts, vector< vector<int> >& bccs) {
+    int children = 0, upward = labels[a] = depth;
+    REP(b, n) if (g[a][b]) {
+        int u = labels[b];
+        if (u < 0) {
+            int k = comp.size();
+            u = bcc_decompose(b, depth+1, labels, comp, arts, bccs);
+            if (u >= depth) {
+                comp.push_back(a);
+                bccs.push_back(vector<int>(comp.begin()+k, comp.end()));
+                comp.erase(comp.begin()+k, comp.end());
+                if (depth > 0 || children > 0)
+                    arts.push_back(a);
+            }
+        }
+        upward <?= u;
+        children++;
+    }
+    comp.push_back(a);
+    if (depth == 0 && children == 0)
+        bccs.push_back(comp);
+    return upward;
+}
+
+void bcc_decompose(vector<int>& arts, vector< vector<int> >& bccs) {
+    vector<int> comp, labels(n, -1);
+    REP(r, n) if (labels[r] < 0) {
+        comp.clear();
+        bcc_decompose(r, 0, labels, comp, arts, bccs);
+    }
+}
+\end{lstlisting}
+
+
+\subsection{橋}
+
+\begin{lstlisting}
+int bridge(Graph& g, int here, int parent, vector<int>& labels,
+       vector<int>& current, vector< vector<int> >& comps, int& id) {
+  int& myid = labels[here];
+  assert(myid < 0);
+  myid = id++;
+
+  int res = myid;
+  Edges& v = g[here];
+  REP(i, v.size()) {
+    int there = v[i];
+    if (there == parent)
+      continue;
+    int child;
+    if (labels[there] < 0) {
+      child = bridge(g, there, here, labels, critical, id);
+      if (child > myid)
+        critical[here][there] = critical[there][here] = true;
+    }
+    else {
+      child = labels[there];
+    }
+    res <?= child;
+  }
+
+  return res;
+}
+\end{lstlisting}
+
+
+
+\subsection{Union-Find}
+
+\begin{lstlisting}
+int n;
+vector<int> data(n, -1);
+bool link(int a, int b) { // 新たな併合を行うとtrue
+  int ra = find_root(a);
+  int rb = find_root(b);
+  if (ra != rb) {
+    if (data[rb] < data[ra])
+      swap(ra, rb);
+    data[ra] += data[rb];
+    data[rb] = ra;
+  }
+  return (ra != rb);
+}
+bool check(int a, int b) { // 同じ集合ならtrue
+  return (find_root(a) == find_root(b));
+}
+int find_root(int a) { // 代表元を返す
+  return ((data[a] < 0) ? a : (data[a] = find_root(data[a])));
+}
+\end{lstlisting}
+
+
+
+\subsection{二部グラフのマッチング}
+
+DFSで増大路を求めていく。片側の辺でメモすれば$\mathrm{O}(V(V+E))$.
+二部グラフにおいて、最大マッチングの大きさは最小点被覆の大きさに一致する。
+以下はもっと速いHopcroft-Karp. 計算量は$\mathrm{O}(\sqrt{V}(V+E))$.
+
+\begin{lstlisting}
+vector< vector<int> > g;
+int n, m;
+
+vector<bool> visited, matched;
+vector<int> levels, matching;
+
+bool augment(int left) {
+  if (left == n)
+    return true;
+  if (visited[left])
+    return false;
+  visited[left] = true;
+  REP(i, g[left].size()) {
+    int right = g[left][i];
+    int next = matching[right];
+    if (levels[next] > levels[left] && augment(next)) {
+      matching[right] = left;
+      return true;
+    }
+  }
+  return false;
+}
+int match() {
+  matching.assign(m, n);
+  matched.assign(n, false);
+  bool cont;
+  do {
+    levels.assign(n+1, -1);
+    levels[n] = n;
+    queue<int> q;
+    REP(left, n) {
+      if (!matched[left]) {
+        q.push(left);
+        levels[left] = 0;
+      }
+    }
+    while(!q.empty()) {
+      int left = q.front();
+      q.pop();
+      REP(i, g[left].size()) {
+        int right = g[left][i];
+        int next = matching[right];
+        if (levels[next] < 0) {
+          levels[next] = levels[left] + 1;
+          q.push(next);
+        }
+      }
+    }
+    visited.assign(n, false);
+    cont = false;
+    REP(left, n)
+      if (!matched[left] && augment(left))
+        matched[left] = cont = true;
+  } while(cont);
+  return count(ALLOF(matched), true);
+}
+\end{lstlisting}
+
+
+\subsection{ハンガリアン法}
+
+$\mathrm{O}(n^2 m) ~ (n < m).$
+
+\begin{lstlisting}
+#define residue(i,j) (adj[i][j] + ofsleft[i] + ofsright[j])
+
+vector<int> min_cost_match(vector< vector<int> > adj) {
+  int n = adj.size();
+  int m = adj[0].size();
+  vector<int> toright(n, -1), toleft(m, -1);
+  vector<int> ofsleft(n, 0), ofsright(m, 0);
+
+  REP(r, n) {
+    vector<bool> left(n, false), right(m, false);
+    vector<int> trace(m, -1), ptr(m, r);
+    left[r] = true;
+
+    for(;;) {
+      int d = numeric_limits<int>::max();
+      REP(j, m) if (!right[j])
+        d <?= residue(ptr[j], j);
+      REP(i, n) if (left[i])
+        ofsleft[i] -= d;
+      REP(j, m) if (right[j])
+        ofsright[j] += d;
+      int b = -1;
+      REP(j, m) if (!right[j] && residue(ptr[j], j) == 0)
+        b = j;
+      trace[b] = ptr[b];
+      int c = toleft[b];
+      if (c < 0) {
+        while(b >= 0) {
+          int a = trace[b];
+          int z = toright[a];
+          toleft[b] = a;
+          toright[a] = b;
+          b = z;
+        }
+        break;
+      }
+      right[b] = left[c] = true;
+      REP(j, m) if (residue(c, j) < residue(ptr[j], j))
+        ptr[j] = c;
+    }
+  }
+  return toright;
+}
+\end{lstlisting}
+
+
+
+\subsection{安定結婚}
+
+任意の希望リストについて、安定なマッチングが少なくとも1つ存在することが知られている。
+以下は男性優先の解を求める。
+返り値は \verb|res[womanID] = manID| なる割り当て。
+各人について、優先度の高い相手から順に並べる。
+\verb|_man[manID][rank] = womanID|, \verb|_woman[womanID][rank] = manID|.
+$\mathrm{O}(n^2).$
+
+\begin{lstlisting}
+inline vector<int> stable_marriage(const vector<vector<int> >& _man,
+                   const vector<vector<int> >& _woman) {
+  int n = _man.size();
+  vector<vector<int> > man(n, n), woman(n, n);
+  vector<int> res(n, -1);
+  
+  REP(i, n) REP(j, n){
+    man[i][j] = _man[i][n-j-1];
+    woman[i][_woman[i][j]] = n - j - 1;
+  }
+  REP(i, n){
+    for(int manID = i; manID >= 0; ){
+      int womanID = man[manID].back();
+      man[manID].pop_back();
+      int prevman = res[womanID];
+      if(prevman < 0 || woman[womanID][prevman] < woman[womanID][manID]){
+        res[womanID] = manID;
+        manID = prevman;
+      }
+    }
+  }
+  return res;
+}
+\end{lstlisting}
+
+
+\subsection{最大流}
+
+重み無しグラフの意味での最短路に沿ってフローを流し続けるのがEdmonds-Karp。
+それにレベルグラフを導入し改善を図ったのが以下のDinic.
+計算時間は$\mathrm{O}(V^4)$.
+隣接リスト表現を使えば$\mathrm{O}(V^2 E)$.
+
+\begin{lstlisting}
+int n, s, t;
+int cap[N][N], flow[N][N];
+int levels[N];
+bool finished[N];
+#define residue(i,j) (cap[i][j] - flow[i][j])
+
+void levelize() {
+  memset(levels, -1, sizeof(levels));
+  queue<int> q;
+  levels[s] = 0; q.push(s);
+  while(!q.empty()) {
+    int here = q.front(); q.pop();
+    REP(there, n) if (levels[there] < 0 && residue(here, there) > 0) {
+      levels[there] = levels[here] + 1;
+      q.push(there);
+    }
+  }
+}
+int augment(int here, int cur) {
+  if (here == t || cur == 0)
+    return cur;
+  if (finished[here])
+    return 0;
+  finished[here] = true;
+  REP(there, n) if (levels[there] > levels[here]) {
+    int f = augment(there, min(cur, residue(here, there)));
+    if (f > 0) {
+      flow[here][there] += f;
+      flow[there][here] -= f;
+      finished[here] = false;
+      return f;
+    }
+  }
+  return 0;
+}
+int maxflow() {
+  memset(flow, 0, sizeof(flow));
+  int total = 0;
+  for(bool cont = true; cont; ) {
+    cont = false;
+    levelize();
+    memset(finished, 0, sizeof(finished));
+    for(int f; (f = augment(s, INF)) > 0; cont = true)
+      total += f;
+  }
+  return total;
+}
+\end{lstlisting}
+
+
+
+\subsection{最小カット}
+
+Stoer-Wagner. $\mathrm{O}(V^3)$.
+グラフの隣接リスト表現とpriority queueを使えば$\mathrm{O}(VE \log E)$.
+\w{非負の重みであること。隣接行列}\verb|adj|\w{は破壊される。}
+
+\begin{lstlisting}
+Weight adj[N][N];
+int n;
+
+int min_cut() {
+  Weight res = WEIGHT_INFTY;
+
+  vector<int> v;
+  REP(i, n)
+    v.push_back(i);
+  for(int m = n; m > 1; m--) {
+    vector<Weight> ws(m, 0);
+    int s, t;
+    Weight w;
+    REP(k, m) {
+      s = t;
+      t = max_element(ws.begin(), ws.end()) - ws.begin();
+      w = ws[t];
+      ws[t] = -1;
+      REP(i, m)
+        if (ws[i] >= 0)
+          ws[i] += adj[v[t]][v[i]];
+    }
+    REP(i, m) {
+      adj[v[i]][v[s]] += adj[v[i]][v[t]];
+      adj[v[s]][v[i]] += adj[v[t]][v[i]];
+    }
+    v.erase(v.begin()+t);
+    res <?= w;
+  }
+  return res;
+}
+\end{lstlisting}
+
+
+
+\subsection{最小費用流}
+
+Primal-Dual. \w{コスト行列は反対称であること。キャパシティ行列は非負であること。
+キャパシティが正の枝はコストが非負であること。}
+
+\begin{lstlisting}
+#define residue(i,j) (cap[i][j] - flow[i][j])
+#define rcost(i,j) (cost[i][j] + pot[i] - pot[j])
+Weight min_cost_flow(vector< vector<Flow> > cap, vector< vector<Weight> > cost, int s, int t) {
+  int n = cap.size();
+
+  vector< vector<Flow> > flow(n, n);
+  vector<Weight> pot(n);
+
+  Weight res = 0;
+  for(;;) {
+
+    vector<Weight> dists(n+1, WEIGHT_INFTY);
+    vector<bool> visited(n, false);
+    vector<int> trace(n, -1);
+    dists[s] = 0;
+
+    for(;;) {
+      int cur = n;
+      REP(i, n) if (!visited[i] && dists[i] < dists[cur])
+        cur = i;
+      if (cur == n)
+        break;
+      visited[cur] = true;
+      REP(next, n) if (residue(cur, next) > EPS) {
+        if (dists[next] > dists[cur] + rcost(cur, next) && !visited[next]) {
+          dists[next] = dists[cur] + rcost(cur, next);
+          trace[next] = cur;
+        }
+      }
+    }
+    if (!visited[t])
+      break;
+
+    Flow f = FLOW_INFTY;
+    for(int c = t; c != s; c = trace[c])
+      f <?= residue(trace[c], c);
+    for(int c = t; c != s; c = trace[c]) {
+      flow[trace[c]][c] += f;
+      flow[c][trace[c]] -= f;
+      res += cost[trace[c]][c] * f;
+    }
+
+    REP(i, n)
+      pot[i] += dists[i];
+  }
+
+  return res;
+}
+\end{lstlisting}
+
+
+
+
+\subsection{二部グラフの辺彩色}
+
+二部グラフの辺に彩色をし、同一ノードに繋がっている辺が同じ色を持たないようにする。
+最小彩色数はグラフの最大次数に等しい。
+
+\begin{lstlisting}
+int n, m;          // 左右のノード数
+vector< vector<int> > g;  // グラフ (index -> [index])
+vector< vector<int> > cl; // 色づけ (index -> color -> index)
+
+BGEC(int n, int m) : n(n), m(m), g(n+m) {}
+void add_edge(int a, int b) { // 左a、右bの間に辺を張る
+  g[a].push_back(n+b);
+  g[n+b].push_back(a);
+}
+int color() {
+  int d = 0; // 彩色数
+  REP(i, n+m)
+    d = max<int>(d, g[i].size());
+  cl.assign(n+m, vector<int>(d, -1));
+  REP(a, n) REP(i, g[a].size()) {
+    int b = g[a][i];
+    int ca = min_element(ALLOF(cl[a])) - cl[a].begin();
+    int cb = min_element(ALLOF(cl[b])) - cl[b].begin();
+    if (ca != cb) {
+      augment(b, ca, cb);
+      cb = ca;
+    }
+    cl[a][ca] = b;
+    cl[b][cb] = a;
+  }
+  return d;
+}
+void augment(int a, int c1, int c2) {
+  int b = cl[a][c1];
+  if (b >= 0) {
+    augment(b, c2, c1);
+    cl[b][c2] = a;
+    cl[a][c1] = -1;
+  }
+  cl[a][c2] = b;
+}
+\end{lstlisting}
+
+
+
+\subsubsection{最小平均長閉路}
+
+% DESCRIPTION:
+平均長が最小である単純閉路を探すアルゴリズム。KarpによるBellman-Fordアルゴリズムの変形で、次の事実を用いる:
+\begin{equation*}
+\mathrm{minavg} = \min_{v \in V} \max_{0 \leq i < n}
+ \frac{d_n(v) - d_i(v)}{n - i}.
+\end{equation*} %
+このコードで求まるのは閉路の平均長。閉路自体を求めるには、Bellman-Fordの過程で最小値に至るルートを保存して後で辿る。
+最小費用循環を効率よく求める際に用いる。
+$ \mathrm{O}(nm) $.
+
+\begin{lstlisting}
+Edges edges;
+
+Weight dp[N+1][N] = { { 0 } };
+REP(k, n) {
+    REP(i, n)
+        dp[k+1][i] = INF;
+    REP(i, m) {
+        Edge& e = edges[i];
+        if (dp[k][e.src] < INF)
+            dp[k+1][e.dest] <?= dp[k][e.src] + e.weight;
+    }
+}
+Weight res = INF;
+REP(i, n) {
+    Weight lo = -INF;
+    REP(k, n) if (dp[n][i] < INF && dp[k][i] < INF)
+        lo >?= (dp[n][i] - dp[k][i]) / (n - k);
+    if (lo > -INF)
+        res <?= lo;
+}
+\end{lstlisting}
+
+
+
+\subsection{範囲の更新}
+
+\w{Intervalsには初期値として「負無限大=無色」を代入しておくこと。}
+
+\begin{lstlisting}
+typedef map<int, int> Intervals;
+
+// paint [left, right) with color c
+void paint(Intervals& v, int left, int right, int c) {
+  assert(left < right);
+  Intervals::iterator first = v.lower_bound(left), last = v.upper_bound(right);
+  int p = (--last)->second;
+  last++;
+  v.erase(first, last);
+  v[left] = c;
+  v[right] = p;
+}
+\end{lstlisting}
+
+\newpage

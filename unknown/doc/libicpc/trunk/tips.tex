@@ -1,0 +1,72 @@
+\section{Tips}
+
+\subsection{std::string}
+
+\begin{lstlisting}
+// コンストラクタ/代入
+string();
+string(const basic_string& s, size_type pos = 0, size_type n = npos);
+string(const char*);
+string(const char* s, size_type n);
+string(size_type n, char c);
+string(InputIterator first, InIter last);
+
+// 挿入
+void insert(iterator pos, InIter f, InIter l);
+string& insert(size_type pos, const string& s);
+string& insert(size_type pos, const char* s);
+string& append(const string& s);
+string& append(size_type n, char c);
+string& append(InIter first, InIter last);
+void push_back(char c);
+
+// 削除
+iterator erase(iterator p);
+iterator erase(iterator first, iterator last);
+string& erase(size_type pos = 0, size_type n = npos);
+void clear();
+void resize(size_type n, char c = char());
+
+// 置換
+string& replace(size_type pos, size_type n, const string& s);
+string& replace(size_type pos, size_type n, size_type n1, char c);
+string& replace(iterator first, iterator last, const string& s);
+string& replace(iterator first, iterator last, size_type n, char c);
+string& replace(iterator first, iterator last, InIter f, InIter l);
+
+// 切り出し
+basic_string substr(size_type pos = 0, size_type n = npos);
+
+// 検索
+size_type find(const basic_string& s, size_type pos = 0);
+size_type find(const char* s, size_type pos, size_type n);
+size_type find(const char* s, size_type pos = 0);
+size_type find(char c, size_type pos = 0);
+size_type find_first_of(const basic_string& s, size_type pos = 0);
+size_type find_first_of(const char* s, size_type pos, size_type n);
+size_type find_first_of(const char* s, size_type pos = 0);
+size_type find_first_of(char c, size_type pos = 0);
+\end{lstlisting}
+
+
+\subsection{レアなalgorithmたち}
+
+\begin{lstlisting}
+void nth_element(RandIter first, RandIter nth, RandIter last, Ordering comp);
+bool includes(InIter1 first1, InIter1 last1, InIter2 first2, InIter2 last2, Ordering comp);
+OutIter set_difference(InIter1 first1, InIter1 last1, InIter2 first2, InIter2 last2,
+    OutIter result, Ordering comp);
+OutIter set_intersection(InIter1 first1, InIter1 last1, InIter2 first2, InIter2 last2,
+    OutIter result, Ordering comp);
+OutIter set_symmetric_difference(InIter1 first1, InIter1 last1, InIter2 first2, InIter2 last2,
+    OutIter result, Ordering comp);
+OutIter set_union(InIter1 first1, InIter1 last1, InIter2 first2, InIter2 last2,
+    OutIter result, Ordering comp);
+void inplace_merge(BidirIter first, BidirIter middle, BidirIter last, Ordering comp);
+OutIter merge(InIter1 first1, InIter1 last1, InIter2 first2, InIter2 last2,
+    OutIter result, Ordering comp);
+ForIter partition(ForIter first, ForIter last, Predicate pred);
+ForIter stable_partition(ForIter first, ForIter last, Predicate pred);
+\end{lstlisting}
+
+\newpage

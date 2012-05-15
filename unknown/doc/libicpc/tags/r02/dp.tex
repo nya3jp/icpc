@@ -1,0 +1,65 @@
+\section{ダイナミック計画法}
+
+
+\subsection{巡回セールスマン問題}
+
+\accepted{UVA10496 Collecting Beepers}
+
+$O(n^2 \cdot 2^n)$ 。
+
+\begin{code}
+Weight adj[N][N];
+Weight tsp[1<<N][N];
+REP(i, 1<<n) REP(j, n) tsp[i][j] = WEIGHT_INFTY;
+tsp[1<<s][s] = 0; // sから始まるpath
+REP(i, 1<<n) REP(j, n) if (i&(1<<j)) REP(k, n)
+    tsp[i|(1<<k)][k] <?= tsp[i][j] + adj[j][k];
+Weight* last = tsp[(1<<n)-1];
+REP(j, n) last[j] += adj[j][s]; // sに戻る場合
+return *min_element(last, last+n);
+\end{code}
+
+
+\subsection{ナップサック問題}
+
+\accepted{UVA10130 Supersale}
+
+アイテム数無制限の場合はテーブルを順方向に走査。
+
+\begin{code}
+Weight v[C+1];
+REP(i, c+1) v[i] = 0;
+REP(k, n) for(int i = c; i >= costs[k]; i--)
+    v[i] >?= v[i - costs[k]] + values[k];
+return *max_element(v, v+c+1);
+\end{code}
+
+
+\subsection{最長共通部分列 (LCS)}
+
+\accepted{UVA10192 Vacation}
+
+\begin{code}
+int lcs[N+1][M+1];
+REP(i, n+1) REP(j, m+1) lcs[i][j] = 0;
+REP(i, n) REP(j, m)
+    lcs[i+1][j+1] = (str1[i] == str2[j] ? lcs[i][j]+1 : 0)
+                    >? lcs[i+1][j] >? lcs[i][j+1];
+return lcs[n][m];
+\end{code}
+
+
+\subsection{最長増加部分列 (LIS)}
+
+\accepted{UVA231 Testing the CATCHER}
+
+$O(n \log n)$ 。strictな増加列の場合はlower\_boundにする。
+
+\begin{code}
+int lis[N];
+REP(i, n) lis[i] = INF;
+REP(i, n) *upper_bound(lis, lis+n, v[i]) = v[i];
+return find(lis, lis+n, INF) - lis;
+\end{code}
+
+

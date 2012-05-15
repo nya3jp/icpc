@@ -1,0 +1,125 @@
+\section{その他}
+
+\subsection{ビット演算}
+
+\begin{code}
+// ビットの数え上げ
+#define POPCOUNT __buildin_popcount
+inline unsigned int popcount(unsigned int n) {
+    n = ((n >> 1)  & 0x55555555) + (n & 0x55555555);
+    n = ((n >> 2)  & 0x33333333) + (n & 0x33333333);
+    n = ((n >> 4)  & 0x0f0f0f0f) + (n & 0x0f0f0f0f);
+    n = ((n >> 8)  & 0x00ff00ff) + (n & 0x00ff00ff);
+    n = ((n >> 16) & 0x0000ffff) + (n & 0x0000ffff);
+    return n;
+}
+
+y = x&-x    // 最右ビット抜き出し
+y = x&(x-1) // 最右ビットを落とす
+
+// 非零部分集合の列挙
+#define FOR_SUBSET(b, a) for(int b = a&-a; b != 0; b = (((b|~a)+1)&a))
+\end{code}
+
+
+
+
+
+
+
+
+\subsection{バイナリヒープ}
+
+\nottested
+
+\begin{code}
+template<class T, class K>
+struct Heap {
+    typedef pair<T,K> value_type;
+    vector<value_type> heap;
+    map<K,int> trace;
+    int n;
+    Heap() : heap(1), n(0) {}
+    const value_type& top() const {
+        return heap[1];
+    }
+    void pop() {
+        flip(1, n--);
+        heap.pop_back();
+        fixheap(1);
+    }
+    void push(const T& value, const K& key) {
+        if (trace.count(key) == 0) {
+            heap.push_back(make_pair(value, key));
+            trace[key] = ++n;
+        }
+        heap[trace[key]].first = value;
+        fixheap(trace[key]);
+    }
+    void remove(const K& key) {
+        if (trace.count(key) > 0) {
+            int pos = trace[key];
+            flip(pos, n--);
+            heap.pop_back();
+            trace.erase(key);
+            if (pos <= n)
+                fixheap(pos);
+        }
+    }
+    void fixheap(int pos) {
+        for(int up, cur = pos; cur > 1 && heap[cur] < heap[up = (cur>>1)]; cur = up)
+            flip(cur, up);
+        for(int down, cur = pos; (down = descend(cur)) <= n && heap[down] < heap[cur]; cur = down)
+            flip(cur, down);
+    }
+    int descend(int pos) {
+        int down = pos << 1;
+        return down + (down+1 <= n && heap[down+1] < heap[down] ? 1 : 0);
+    }
+    void flip(int a, int b) {
+        swap(trace[heap[a].second], trace[heap[b].second]);
+        swap(heap[a], heap[b]);
+    }
+};
+\end{code}
+
+
+\subsection{Suffix Array}
+\begin{code}
+struct sa_comparator {
+    const int h, *g;
+    sa_comparator(int h, int* g) : h(h), g(g) {}
+    inline bool operator()(int a, int b) {
+        return (a == b ? false :
+            g[a] != g[b] ? (g[a] < g[b]) : (g[a+h] < g[b+h]) );
+    }
+};
+void make_suffix_array(const char* str, vector<const char*>& sa) {
+    const int n = strlen(str);
+    int *v, *g, *b;
+    v = new int[n+1]; g = new int[n+1]; b = new int[n+1];
+    for(int i = 0; i <= n; i++) {
+        v[i] = i;
+        g[i] = (int)str[i] & 0xff;
+    }
+    sort(v, v+n+1, sa_comparator(0, g));
+    for(int h = 1; ; h *= 2) {
+        sa_comparator comp(h, g);
+        sort(v, v+n+1, comp);
+
+        b[0] = 0;
+        for(int i = 1; i <= n; i++)
+            b[i] = b[i-1] + (comp(v[i-1], v[i]) ? 1 : 0);
+        if (b[n] == n)
+            break;
+        for(int i = 0; i <= n; i++)
+            g[v[i]] = b[i];
+    }
+    sa.resize(n);
+    for(int i = 0; i < n; i++)
+        sa[i] = str + v[i+1];
+    delete[] v; delete[] g; delete[] b;
+}
+\end{code}
+
+

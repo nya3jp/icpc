@@ -1,0 +1,35 @@
+%%
+%% This is file `geometry.drv',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% geometry.dtx  (with options: `driver')
+%% 
+%% File: geometry.dtx Copyright (C) 1996-2002 Hideo Umeki
+%%                              (hideo.umeki@toshiba.co.jp)
+%%
+%% This package may be distributed under the terms of the LaTeX
+%% Project Public License, as described in lppl.txt in the base
+%% LaTeX distribution, either version 1.2 or (at your option)
+%% any later version.
+%%
+\ProvidesFile{geometry.drv}
+  [Geometry documentation driver file]
+\documentclass{ltxdoc}
+\usepackage{times}
+\def\ttdefault{cmtt}
+\usepackage[ hmargin={4cm,1.5cm},top=1.5cm, marginpar=3.5cm
+  ]{geometry}
+%\OnlyDescription
+\begin{document}
+ \GetFileInfo{geometry.sty}
+ \title{The \textsf{geometry} package}
+ \author{Hideo UMEKI\\\texttt{hideo.umeki@toshiba.co.jp}}
+ \date{\filedate~~\fileversion{}}
+ \maketitle
+ \DocInput{geometry.dtx}
+\end{document}
+\endinput
+%%
+%% End of file `geometry.drv'.
