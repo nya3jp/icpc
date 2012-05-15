@@ -1,0 +1,4 @@
+## WARNING
+
+- All files are possibly spoilers of past programming contest problems.
+- Some codes were written in really bad manner. I know that.
