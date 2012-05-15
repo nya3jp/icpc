@@ -2,3 +2,14 @@
 
 - All files are possibly spoilers of past programming contest problems.
 - Some codes were written in really bad manner. I know that.
+
+
+## Credits
+
+A lot of thanks to my teammates for fun and exciting time in my ACM-ICPC life.
+
+- 2004: qoo_ (Yutaka Hori, Kazunori Yamamoto, Shuhei Takahashi)
+- 2005: _oop (Yutaka Hori, Kazunori Yamamoto, Shuhei Takahashi)
+- 2006: CLAGGANO (Yutaka Hori, Tadashi Hoshino, Shuhei Takahashi)
+- 2007: Unknown (Kazuki Ohta, Sukehide Ushioda, Shuhei Takahashi)
+- 2008: kkntkr (Tomoya Adachi, Sukehide Ushioda, Shuhei Takahashi)
