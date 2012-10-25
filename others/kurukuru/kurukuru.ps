@@ -1,0 +1,663 @@
+%!
+%
+% ACM-ICPC
+% 2007 Japan Preliminary Contest
+% Problem E
+% Twirl Around
+%
+% Problem statement:
+%   http://www.logos.ic.i.u-tokyo.ac.jp/icpc2007/jp/domestic/problems/E_en.html
+%
+% Usage:
+%   ps2pdf kurukuru.ps < kurukuru.official.in > kurukuru.out
+%   ... then you'll get kurukuru.out and kurukuru.pdf.
+%
+% Code by TAKAHASHI Shuhei (nya)
+%
+
+% specify the input file here.
+% to read from stdin, use (%stdin) .
+
+/stdin (%stdin) (r) file def
+
+
+/debug false def
+/moredebug false def
+
+/fontsize { /Times-Roman findfont exch scalefont setfont } def
+/mm { 10 div 2.54 div 72 mul } def
+/inf 1e20 def
+/pause { print flush stdin read { pop } if } def
+/epszero 1e-8 def
+/epsdist 1e-4 def
+/epsccw 1e-5 def
+/epshole 1e-3 def
+/epsdeg 5e-3 def
+/epsmovedeg 5e-1 def
+
+/div0 {
+    dup abs epszero le {
+        pop pop inf
+    } {
+        div
+    } ifelse
+} def
+/arg {
+    2 copy abs epszero le exch abs epszero le and {
+        pop pop 0
+    } {
+        exch atan
+        dup 180 gt { 360 sub } if
+    } ifelse
+} def
+
+/min {
+    2 copy
+    gt { exch } if
+    pop
+} def
+/max {
+    2 copy
+    lt { exch } if
+    pop
+} def
+
+/cabs {
+    moredebug { (cabs) == } if
+    4 dict begin
+    /y exch def
+    /x exch def
+    x x mul y y mul add sqrt
+    end
+} def
+/cadd {
+    moredebug { (cadd) == } if
+    4 dict begin
+    /y2 exch def
+    /x2 exch def
+    /y1 exch def
+    /x1 exch def
+    x1 x2 add
+    y1 y2 add
+    end
+} def
+/csub {
+    moredebug { (csub) == } if
+    4 dict begin
+    /y2 exch def
+    /x2 exch def
+    /y1 exch def
+    /x1 exch def
+    x1 x2 sub
+    y1 y2 sub
+    end
+} def
+/cmul {
+    moredebug { (cmul) == } if
+    4 dict begin
+    /y2 exch def
+    /x2 exch def
+    /y1 exch def
+    /x1 exch def
+    x1 x2 mul y1 y2 mul sub
+    x1 y2 mul x2 y1 mul add
+    end
+} def
+/cdiv {
+    moredebug { (cdiv) == } if
+    5 dict begin
+    /y2 exch def
+    /x2 exch def
+    /y1 exch def
+    /x1 exch def
+    /rr x2 x2 mul y2 y2 mul add def
+    x1 y1 x2 y2 neg cmul
+    1.0 rr div0 0.0 cmul
+    end
+} def
+/inp {
+    moredebug { (inp) == } if
+    4 dict begin
+    /y2 exch def
+    /x2 exch def
+    /y1 exch def
+    /x1 exch def
+    x1 x2 mul y1 y2 mul add
+    end
+} def
+/outp {
+    moredebug { (outp) == } if
+    4 dict begin
+    /y2 exch def
+    /x2 exch def
+    /y1 exch def
+    /x1 exch def
+    x1 y2 mul x2 y1 mul sub
+    end
+} def
+/proj {
+    moredebug { (proj) == } if
+    4 dict begin
+    /y2 exch def
+    /x2 exch def
+    /y1 exch def
+    /x1 exch def
+    x1 y1 x2 y2 inp
+    x2 y2 x2 y2 inp
+    div0 0.0
+    x2 y2 cmul
+    end
+} def
+/cis {
+    moredebug { (cis) == } if
+    dup cos exch sin
+} def
+/cdist {
+    moredebug { (cdist) == } if
+    csub cabs
+} def
+
+/online {
+    moredebug { (online) == } if
+    6 dict begin
+    /y3 exch def
+    /x3 exch def
+    /y2 exch def
+    /x2 exch def
+    /y1 exch def
+    /x1 exch def
+    x1 y1 x2 y2 cdist
+    x2 y2 x3 y3 cdist add
+    x1 y1 x3 y3 cdist sub
+    epsdist le
+    end
+} def
+
+/ccw {
+    20 dict begin
+    /y3 exch def
+    /x3 exch def
+    /y2 exch def
+    /x2 exch def
+    /y1 exch def
+    /x1 exch def
+    /ax x2 x1 sub def
+    /ay y2 y1 sub def
+    /bx x3 x1 sub def
+    /by y3 y1 sub def
+    /signum ax ay bx by outp def
+    signum abs epsccw gt {
+        signum 0 gt { 1 } { -1 } ifelse
+    } {
+        ax bx mul epsccw neg lt
+        ay by mul epsccw neg lt or {
+            -1
+        } {
+            ax ay cabs bx by cabs epsccw sub lt {
+                1
+            } {
+                0
+            } ifelse
+        } ifelse
+    } ifelse
+    end
+} def
+
+/crosses {
+    8 dict begin
+    /y4 exch def
+    /x4 exch def
+    /y3 exch def
+    /x3 exch def
+    /y2 exch def
+    /x2 exch def
+    /y1 exch def
+    /x1 exch def
+    x1 y1 x2 y2 x3 y3 ccw
+    x1 y1 x2 y2 x4 y4 ccw mul 0 le
+    x3 y3 x4 y4 x1 y1 ccw
+    x3 y3 x4 y4 x2 y2 ccw mul 0 le
+    and
+    end
+} def
+
+/pt {
+    1 dict begin
+    /i exch def
+    xs i get
+    ys i get
+    end
+} def
+
+
+
+/times {
+    exch 1 sub exch
+    0 1
+    4 2 roll
+    for
+} def
+
+/realprint {
+    5 dict begin
+    /x exch def
+    /s 100 string def
+    /sign x 0.0 lt { (-) } { () } ifelse def
+    /num x abs cvi def
+    /frac x abs num sub 1000000 mul 0.5 add cvi def
+    frac 1000000 ge {
+        /num num 1 add def
+        /frac frac 1000000 sub def
+    } if
+    sign print
+    num s cvs print
+    (.) print
+    [100000 10000 1000 100 10] { frac gt { (0) print } if } forall
+    frac s cvs print
+    end
+} def
+
+
+/skipspace {
+    1 dict begin
+    {
+        /c stdin read pop def
+        c 10 eq c 13 eq c 9 eq c 32 eq or or or not {
+            c
+            exit
+        } if
+    } loop
+    end
+} def
+
+/scan {
+    6 dict begin
+    /res 0 def
+    /sign 1 def
+    /dot false def
+
+    skipspace
+    /c exch def
+    c 45 eq % -
+    { /sign -1 def } { /res c 48 sub def } ifelse
+    {
+        /c stdin read pop def
+        c 48 ge c 58 lt and {
+            /d c 48 sub def
+            dot {
+                /res res d ord mul add def
+                /ord ord 0.1 mul def
+            } {
+                /res res 10 mul d add def
+            } ifelse
+        } {
+            c 46 eq {
+                /dot true def
+                /res res cvr def
+                /ord 0.1 def
+            } {
+                exit
+            } ifelse
+        } ifelse
+    } loop
+    res sign mul
+    end
+} def
+
+/begindraw {
+    16 dict begin
+    /xh inf neg def
+    /xl inf def
+    /yh inf neg def
+    /yl inf def
+    n {
+        /i exch def
+        i pt
+        /y exch def
+        /x exch def
+        /xh xh x max def
+        /xl xl x min def
+        /yh yh y max def
+        /yl yl y min def
+    } times
+
+    /width xh xl sub yh yl sub max def
+    /ratio 200 mm width div def
+
+    gsave
+
+    5 mm 48 mm translate
+    ratio ratio scale
+    xl neg yl neg translate
+
+    1 ratio div setlinewidth
+
+    end
+} def
+
+/enddraw {
+
+    grestore
+    showpage
+    
+} def
+
+/drawpoly {
+    6 dict begin
+    /spy exch def
+    /spx exch def
+    /sty exch def
+    /stx exch def
+    /sfy exch def
+    /sfx exch def
+
+    gsave
+    currentlinewidth 5 mul setlinewidth
+    newpath
+    sfx sfy moveto
+    stx sty lineto
+    stroke
+    grestore
+    
+    newpath
+    n 1 sub pt moveto
+    n { pt lineto } times
+    stroke
+
+    newpath
+    spx spy 5 currentlinewidth mul 0 360 arc
+    fill
+    
+    end
+} def
+
+/calcangle {
+    debug { (calcangle) == } if
+    
+    20 dict begin
+    /sty exch def
+    /stx exch def
+    /sfy exch def
+    /sfx exch def
+    /svx stx sfx sub def
+    /svy sty sfy sub def
+    /r svx svy cabs def
+
+    /nextangle restangle def
+
+    debug { (a) == } if
+
+    n {
+        /i exch def
+        /d i pt sfx sfy cdist def
+        epsdist d lt  d r epsdist add le  and {
+            %(point:) =
+            %sfx = sfy =
+            %xs i get = ys i get =
+            /angle i pt sfx sfy csub  svx svy  cdiv  arg neg def
+            angle epsdeg lt { /angle angle 360.0 add def } if
+            debug {
+                (point ) print i = (demands theta < ) print angle =
+            } if
+            angle epsdeg gt {
+                /nextangle nextangle angle min def
+            } if
+        } if
+    } times
+
+    debug { (b) == } if
+
+    n {
+        /i exch def
+        /j i 1 add n mod def
+        i pt j pt csub
+        /lvy exch def
+        /lvx exch def
+        sfx sfy i pt csub  lvx lvy  proj  i pt  cadd
+        /fty exch def
+        /ftx exch def
+        /d ftx fty sfx sfy cdist def
+        %debug { (d = ) print d ==  } if
+        d r epsdist sub lt {
+            /w r r mul d d mul sub sqrt def
+            -1 2 1 {
+                /s exch def
+                lvx lvy  w lvx lvy cabs div0 s mul  0 cmul  ftx fty cadd
+                /py exch def
+                /px exch def
+                %debug { (rp:) = px = py = } if
+                i pt  px py  j pt  online {
+                    /angle px py sfx sfy csub  svx svy  cdiv  arg neg def
+                    angle epsdeg lt { /angle angle 360.0 add def } if
+                    debug { (line ) print i = (demands theta < ) print angle = } if
+                    angle epsdeg gt {
+                        /nextangle nextangle angle min def
+                    } if
+                } if
+            } for
+        } if
+    } times
+
+    nextangle
+    end
+} def
+
+
+/findsupport {
+    debug { (findsupport) == } if
+    
+    10 dict begin
+    /sty exch def
+    /stx exch def
+    /sfy exch def
+    /sfx exch def
+
+    /spt 0.0 def
+
+    n {
+        /i exch def
+        sfx sfy  i pt  stx sty  online {
+            /spt spt
+                 i pt sfx sfy cdist
+                 stx sty sfx sfy cdist  div
+                 max def
+        } if
+    } times
+
+    n {
+        /i exch def
+        /j i 1 add n mod def
+        i pt  stx sty  j pt  online {
+            /spt 1.0 def
+        } if
+    } times
+
+    spt
+    end
+} def
+
+
+
+
+/outpoly {
+    10 dict begin
+    /sty exch def
+    /stx exch def
+    /sfy exch def
+    /sfx exch def
+    /res false def
+
+    stx sty sfx sfy csub epsmovedeg neg cis cmul sfx sfy cadd
+    /stey exch def
+    /stex exch def
+
+    /theta 0.0 def
+    n {
+        /i exch def
+        /j i 1 add n mod def
+        /theta theta
+               i pt stex stey csub  j pt stex stey csub  cdiv  arg
+               add def
+    } times
+
+    theta abs epsdeg le {
+        debug { res not { gsave initmatrix 40 fontsize 0 5 mm moveto (Point out of the polygon) show grestore } if } if
+        /res true def
+    } if
+
+    n {
+        /i exch def
+        /j i 1 add n mod def
+
+        i pt j pt csub arg   
+        stx sty sfx sfy csub arg
+        sub
+        sin arcsin abs
+        /ddeg exch def
+        ddeg epsdeg gt {
+            stex stey sfx sfy csub epshole 0 cmul sfx sfy cadd
+            stex stey i pt j pt crosses {
+                debug { res not { gsave initmatrix 40 fontsize 0 5 mm moveto (Overlapping line) show grestore } if } if
+                /res true def
+            } if
+        } if
+    } times
+
+    res
+    end
+} def
+
+
+/solve {
+    20 dict begin
+
+    debug { (solve) == } if 
+    
+    /sfx 0.0 def
+    /sfy 0.0 def
+    /svx 0.0 def
+    /svy slen def
+    /spt 0.0 def
+    /opposite false def
+
+    {
+        /stx sfx svx add def
+        /sty sfy svy add def
+        /spx sfx svx spt mul add def
+        /spy sfy svy spt mul add def
+        /two spt epshole gt def
+
+        begindraw
+        sfx sfy stx sty spx spy drawpoly
+
+        debug { 
+            (stick at) =
+            sfx = sfy =
+            (to) =
+            stx = sty =
+            (support at) =
+            spx = spy =
+            (.) =
+        } if
+
+        debug { (setout) == } if
+
+        restangle epsdeg le {
+            gsave
+            initmatrix
+            0 mm 20 mm moveto
+            50 fontsize
+            (Finished) show
+            grestore
+            enddraw
+            exit
+        } if
+        /out spx spy stx sty outpoly def
+        two { /out spx spy sfx sfy outpoly out or def } if
+        out {
+            gsave
+            initmatrix
+            0 mm 20 mm moveto
+            50 fontsize
+            (Stucked) show
+            grestore
+            enddraw
+            exit
+        } if
+
+        debug { (hoge) == } if
+
+        /nextangle restangle def
+        /nextangle nextangle spx spy stx sty calcangle min def
+        two { /nextangle nextangle spx spy sfx sfy calcangle min def } if
+
+        debug { 
+            (turning) =
+            nextangle =
+            (.) =
+        } if
+
+        sfx sfy spx spy csub  nextangle neg cis  cmul  spx spy cadd
+        /sfy2 exch def
+        /sfx2 exch def
+        svx svy  nextangle neg cis  cmul
+        /svy2 exch def
+        /svx2 exch def
+
+        /sfx sfx2 def
+        /sfy sfy2 def
+        /svx svx2 def
+        /svy svy2 def
+        /stx sfx svx add def
+        /sty sfy svy add def
+        /restangle restangle nextangle sub def
+
+        /spt sfx sfy stx sty findsupport def
+        spt 1 epszero sub ge {
+            sfx sfy svx svy cadd
+            /sfy exch def
+            /sfx exch def
+            /svx svx neg def
+            /svy svy neg def
+            /spt 0.0 def
+            /opposite opposite not def
+            debug { (flip) == } if
+        } if
+
+        enddraw
+    } loop
+
+    opposite { stx sty } { sfx sfy } ifelse
+    end
+} def
+
+
+
+/main {
+    {
+        /slen scan cvr def
+        /restangle scan 360.0 mul def
+        /n scan def
+        n 0 eq { exit } if
+
+        /xs n array def
+        /ys n array def
+        n {
+            /i exch def
+            xs i scan cvr put
+            ys i scan cvr put
+        } times
+        solve
+        /y exch def
+        /x exch def
+        /s 100 string def
+        x realprint
+        ( ) print
+        y realprint
+        (\n) print
+        flush
+    } loop
+} def
+
+main
+
